@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "书签海报墙",
+  "version": "0.7.10",
+  "description": "像整理海报墙一样整理 Chrome / Edge 原生书签，支持并发真实网页截图与海报化处理。",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "128": "assets/icon128.png"
+  },
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "unlimitedStorage",
+    "debugger"
+  ],
+  "action": {
+    "default_title": "打开书签海报墙",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "offline_enabled": true,
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data: blob: https: http: chrome-extension:; connect-src 'self' https: http:;"
+  }
+}

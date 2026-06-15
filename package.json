@@ -1,0 +1,12 @@
+{
+  "name": "bookmark-poster-wall",
+  "version": "0.7.10",
+  "description": "Poster-wall Chrome/Edge bookmark organizer with parallel real webpage screenshots and posterization.",
+  "private": false,
+  "license": "MIT",
+  "scripts": {
+    "test": "node tests/bookmark-utils.test.js && node tests/manifest.test.js && node tests/ui-config.test.js",
+    "check": "node --check src/app.js && node --check src/bookmark-utils.js && node --check background.js"
+  },
+  "devDependencies": {}
+}

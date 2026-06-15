@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>书签海报墙</title>
+  <link rel="icon" href="assets/icon32.png" />
+  <link rel="stylesheet" href="src/styles.css?v=0.7.21" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon" data-icon="grid"></span>
+        <div><strong>书签海报墙</strong><small>v0.7.10</small></div>
+      </div>
+      <div class="side-search"><span data-icon="search"></span><input id="sideSearchInput" placeholder="搜索书签或文件夹" /></div>
+      <nav class="smart-list">
+        <button class="smart-item active" data-view="all"><span data-icon="grid"></span><b>全部书签</b><small id="sidebarTotal">0</small></button>
+        <button class="smart-item" data-view="unfiled"><span data-icon="star"></span><b>未分类书签</b><small id="unfiledCount">0</small></button>
+        <button class="smart-item" data-view="recent"><span data-icon="clock"></span><b>最近添加</b><small id="recentCount">0</small></button>
+        <button class="smart-item" data-view="duplicates"><span data-icon="copy"></span><b>重复书签</b><small id="duplicateCount">0</small></button>
+        <button class="smart-item" data-view="ai-pending"><span data-icon="sparkle"></span><b>AI 待确认</b><small id="aiPendingCount">0</small></button>
+      </nav>
+      <div class="side-section-title"><span>文件夹</span><button id="newFolderBtn" title="新建文件夹"><span data-icon="plus"></span></button></div>
+      <div id="folderTree" class="folder-tree"></div>
+      <div class="sidebar-footer">
+        <button id="settingsBtn"><span data-icon="gear"></span> 设置</button>
+        <button id="helpBtn"><span data-icon="help"></span> 帮助</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title-block"><h1 id="currentTitle">全部书签</h1><p id="currentSub">0 个书签</p></div>
+        <label class="global-search"><span data-icon="search"></span><input id="searchInput" placeholder="搜索书签或输入网址" /></label>
+        <div class="toolbar-actions">
+          <div class="segmented"><button id="scopeAll" class="active">全部</button><button id="scopeCurrent">当前文件夹</button></div>
+          <select id="sortSelect" title="排序"><option value="recent">最近添加</option><option value="title">标题</option><option value="domain">域名</option><option value="folder">文件夹</option><option value="ai">AI 置信度</option></select>
+          <select id="filterSelect" title="筛选"><option value="all">筛选</option><option value="with-ai">有 AI 建议</option><option value="no-ai">无 AI 建议</option><option value="duplicates">重复书签</option><option value="domain-github">GitHub 域名</option></select>
+          <select id="sizeSelect" title="卡片大小"><option value="large">卡片大小：大</option><option value="medium">卡片大小：中</option><option value="small">卡片大小：小</option></select>
+          <select id="posterAspectSelect" title="海报比例"><option value="landscape">横向海报</option><option value="portrait">竖向海报</option></select>
+          <select id="languageSelect" title="语言"><option value="zh-CN">中文</option><option value="en">English</option></select>
+          <button class="ai-main" id="aiBtn"><span data-icon="sparkle"></span> AI 预整理</button>
+          <span class="ai-status" id="aiStatusPill"></span>
+          <button id="refreshBtn" class="icon-btn" title="同步书签"><span data-icon="refresh"></span></button>
+        </div>
+      </header>
+      <section id="grid" class="poster-grid large"></section>
+    </main>
+  </div>
+
+  <div id="bulkBar" class="bulk-bar">
+    <span id="selectedCount">已选择 0 项</span>
+    <button id="bulkMoveBtn"><span data-icon="move"></span> 移动到文件夹</button>
+    <button id="bulkDeleteBtn" class="danger"><span data-icon="trash"></span> 删除</button>
+    <button id="bulkAiBtn"><span data-icon="sparkle"></span> AI 预整理</button>
+    <button id="bulkRefreshBtn"><span data-icon="refresh"></span> 刷新海报</button>
+    <button id="cancelSelectionBtn"><span data-icon="close"></span> 取消选择</button>
+  </div>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-card settings-card">
+      <aside class="settings-nav">
+        <h2>设置</h2>
+        <button class="active" data-tab="basic"><span data-icon="gear"></span><span><b>基础</b><small>显示与入口</small></span></button>
+        <button data-tab="appearance"><span data-icon="eye"></span><span><b>外观</b><small>语言与卡片</small></span></button>
+        <button data-tab="thumbnail"><span data-icon="image"></span><span><b>海报</b><small>截图与缓存</small></span></button>
+        <button data-tab="ai"><span data-icon="sparkle"></span><span><b>AI</b><small>服务商与规则</small></span></button>
+        <button data-tab="data"><span data-icon="database"></span><span><b>数据</b><small>备份与导出</small></span></button>
+        <button data-tab="privacy"><span data-icon="shield"></span><span><b>隐私</b><small>权限边界</small></span></button>
+        <button data-tab="about"><span data-icon="info"></span><span><b>关于</b><small>版本与定位</small></span></button>
+      </aside>
+      <section class="settings-content">
+        <div class="modal-head"><div><h2 id="settingsPanelTitle">设置</h2><p id="settingsPanelSubtitle">管理海报、备份、AI 和隐私选项</p></div><button id="closeSettings">×</button></div>
+        <div class="settings-dock">
+          <div class="settings-dock-copy"><strong id="settingsDockTitle">基础设置</strong><span id="settingsDockHint">保存当前设置，继续整理书签墙</span></div>
+          <div class="settings-dock-actions">
+            <button type="button" class="ghost" id="settingsDockSecondary"><span data-icon="download"></span><span>导出备份</span></button>
+            <button type="button" class="primary" id="settingsDockPrimary"><span data-icon="gear"></span><span>保存设置</span></button>
+          </div>
+        </div>
+        <div class="settings-panel active" data-panel="basic">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">建议从这里开始</span>
+            <div>
+              <h3>把首页调成你日常整理书签的样子</h3>
+              <p>基础设置只控制首页显示，不会移动、删除或访问任何网页。</p>
+            </div>
+            <div class="settings-intro-actions">
+              <button type="button" class="ghost" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 先备份书签</button>
+              <button type="button" class="primary" data-jump-tab="thumbnail"><span data-icon="image"></span> 设置海报</button>
+            </div>
+          </div>
+          <div class="settings-overview-card">
+            <div class="overview-copy">
+              <span class="overview-kicker">当前工作流</span>
+              <strong>先看清，再整理</strong>
+              <p>首页展示保持轻量；截图、AI 和批量整理都由你主动触发。</p>
+            </div>
+            <div class="overview-stats">
+              <span><b>本地</b><small>书签读取</small></span>
+              <span><b>手动</b><small>截图 / AI</small></span>
+              <span><b>可撤销</b><small>整理操作</small></span>
+            </div>
+          </div>
+          <section class="settings-section">
+            <div class="section-head">
+              <div><strong>首页显示</strong><small>这些开关会立即影响海报卡片的信息密度</small></div>
+              <span class="section-badge">推荐默认</span>
+            </div>
+            <label class="switch-line"><span><b>显示文件夹标签</b><small>在每张卡片底部显示所在文件夹，适合整理时判断归类</small></span><input id="showFolderTag" type="checkbox" checked></label>
+            <label class="switch-line"><span><b>显示添加时间</b><small>需要按时间回看书签时开启；平时关闭会让卡片更干净</small></span><input id="showDate" type="checkbox"></label>
+          </section>
+          <div class="settings-action-list">
+            <button type="button" data-jump-tab="appearance"><span data-icon="eye"></span><b>调整语言和卡片观感</b><small>外观页</small></button>
+            <button type="button" data-jump-tab="ai"><span data-icon="sparkle"></span><b>配置 AI 预整理</b><small>AI 页</small></button>
+            <button type="button" data-jump-tab="data"><span data-icon="database"></span><b>导出或管理数据</b><small>数据页</small></button>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="appearance">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">外观</span>
+            <div>
+              <h3>少一点噪音，多一点可读性</h3>
+              <p>这里保留最影响阅读和判断的设置：语言、工具栏密度、海报标签显示。</p>
+            </div>
+            <span class="style-pill">Light Glass</span>
+          </div>
+          <section class="settings-section appearance-layout">
+            <div class="setting-hero-card">
+              <div><strong>视觉风格</strong><p>浅色面板、低对比边界和克制蓝色强调，适合长时间整理和浏览大量卡片。</p></div>
+              <span class="style-pill">当前方案</span>
+            </div>
+            <div class="subsection design-preview-section"><h4>海报卡片预览</h4>
+              <div class="mini-card-preview"><div class="mini-shot"><span></span><b>MDN Web Docs</b></div><div class="mini-info"><b>MDN Web Docs</b><small>developer.mozilla.org</small><em>真实海报</em></div></div>
+              <p class="hint">截图会固定裁成海报比例；没有真实截图时使用本地预览，避免页面空白或布局跳动。</p>
+            </div>
+          </section>
+          <section class="settings-section">
+            <div class="section-head"><div><strong>界面偏好</strong><small>降低频繁整理时的干扰</small></div></div>
+            <label class="switch-line"><span><b>紧凑工具栏</b><small>搜索、筛选和 AI 入口保持在顶部，窄屏时横向滚动</small></span><input type="checkbox" checked disabled></label>
+            <label class="switch-line"><span><b>轻量海报标签</b><small>截图状态和文件夹标签只在卡片信息区显示，不遮挡海报</small></span><input type="checkbox" checked disabled></label>
+            <label class="switch-line"><span><b>语言 / Language</b><small>切换主界面、设置页和 AI 操作入口语言</small></span><select id="settingsLanguageSelect"><option value="zh-CN">中文</option><option value="en">English</option></select></label>
+          </section>
+        </div>
+        <div class="settings-panel bp-settings-shot" data-panel="thumbnail">
+          <div class="settings-page-intro bp-shot-header">
+            <span class="settings-kicker">海报生成</span>
+            <div>
+              <h3>选择一个预设即可开始</h3>
+              <p>默认推荐“均衡模式”：稳定、速度适中，适合大多数书签墙。</p>
+            </div>
+            <label class="bp-master-switch">
+              <span>自动补齐当前海报墙缺失截图</span>
+              <input id="autoGeneratePosters" type="checkbox" checked>
+            </label>
+          </div>
+          <div class="settings-status-strip shot-status-strip">
+            <span><small>截图引擎</small><b id="shotSummaryEngine">增强 CDP</b></span>
+            <span><small>当前并发</small><b id="shotSummaryConcurrent">4</b></span>
+            <span><small>视口尺寸</small><b id="shotSummaryViewport">1440 × 900</b></span>
+            <span><small>安全状态</small><b id="shotSummaryBackup">备份提醒开启</b></span>
+          </div>
+
+          <input id="posterMode" type="hidden" value="screenshot-first">
+          <input id="posterLimit" type="hidden" value="300">
+          <input id="posterVisibleLimit" type="hidden" value="300">
+          <input id="captureQuality" type="hidden" value="82">
+          <input id="useRealThumbs" type="checkbox" checked hidden>
+          <input id="askThumbPermission" type="checkbox" checked hidden>
+          <input id="whitePageEnhance" type="checkbox" checked hidden>
+          <input id="fallbackToOg" type="checkbox" checked hidden>
+
+          <section class="settings-section poster-preset-section">
+            <div class="section-head">
+              <div><strong>常用预设</strong><small>先选预设，再按需微调下方参数</small></div>
+            </div>
+            <div class="poster-preset-row">
+              <button type="button" class="poster-preset" data-strategy="quiet-window" data-concurrent="2" data-size="1365x768" data-delay="2600" data-crop="top"><b>省心模式</b><small>更慢但兼容性更好，适合电脑较忙时</small></button>
+              <button type="button" class="poster-preset recommended" data-strategy="debugger-cdp" data-concurrent="4" data-size="1440x900" data-delay="1800" data-crop="smart"><b>均衡模式</b><small>推荐，速度与成功率比较稳</small></button>
+              <button type="button" class="poster-preset" data-strategy="debugger-cdp" data-concurrent="8" data-size="1920x1080" data-delay="1800" data-crop="smart"><b>高清模式</b><small>更清晰，也会占用更多 CPU 和内存</small></button>
+            </div>
+          </section>
+
+          <section class="bp-setting-card bp-engine-section">
+            <div class="bp-section-title">
+              <span>截图方式</span>
+              <small>不确定时保持推荐项即可</small>
+            </div>
+            <select id="screenshotStrategy" hidden>
+              <option value="debugger-cdp">增强 CDP 真实截图（默认）</option>
+              <option value="quiet-window">临时窗口截图</option>
+              <option value="active-tabs">当前窗口标签页截图</option>
+            </select>
+            <div class="engine-group bp-engine-grid">
+              <button type="button" class="engine-card bp-choice-card" data-value="debugger-cdp">
+                <span class="bp-radio-dot"></span>
+                <span class="bp-choice-icon bp-blue-icon" data-icon="image"></span>
+                <span class="bp-choice-copy"><strong>增强 CDP 截图</strong><small>首选方式，页面还原更完整</small></span>
+                <em>推荐</em>
+              </button>
+              <button type="button" class="engine-card bp-choice-card" data-value="quiet-window">
+                <span class="bp-radio-dot"></span>
+                <span class="bp-choice-icon bp-purple-icon" data-icon="window"></span>
+                <span class="bp-choice-copy"><strong>临时窗口截图</strong><small>兼容性更好，适合复杂页面</small></span>
+              </button>
+              <button type="button" class="engine-card bp-choice-card" data-value="active-tabs">
+                <span class="bp-radio-dot"></span>
+                <span class="bp-choice-icon bp-green-icon" data-icon="globe"></span>
+                <span class="bp-choice-copy"><strong>当前标签页截图</strong><small>少量页面手动处理时使用</small></span>
+              </button>
+            </div>
+          </section>
+
+          <section class="bp-setting-card bp-perf-section">
+            <div class="bp-section-title">
+              <span>速度与画质</span>
+              <small>并发越高越快，但电脑负载也更高</small>
+            </div>
+            <div class="bp-perf-grid">
+              <div class="bp-concurrency-box">
+                <div class="bp-row-label"><span>同时生成数量</span><b>当前：<i id="posterConcurrentValue">4</i></b></div>
+                <div class="bp-range-line"><span>1</span><input id="posterConcurrent" type="range" min="1" max="63" value="4" list="concurrencyMarks"><span>63</span></div>
+                <label class="bp-number-inline">精确数值 <input id="posterConcurrentNumber" type="number" min="1" max="63" value="4" inputmode="numeric"></label>
+                <datalist id="concurrencyMarks"><option value="1"></option><option value="2"></option><option value="4"></option><option value="8"></option><option value="16"></option><option value="32"></option><option value="63"></option></datalist>
+                <div class="concurrency-marks bp-mark-row">
+                  <button type="button" class="concurrency-mark" data-value="1">1</button>
+                  <button type="button" class="concurrency-mark" data-value="2">2</button>
+                  <button type="button" class="concurrency-mark" data-value="4">4</button>
+                  <button type="button" class="concurrency-mark" data-value="8">8</button>
+                  <button type="button" class="concurrency-mark" data-value="16">16</button>
+                  <button type="button" class="concurrency-mark" data-value="32">32</button>
+                  <button type="button" class="concurrency-mark" data-value="63">63</button>
+                </div>
+                <p class="bp-help"><span data-icon="info"></span>一般电脑建议 4；截图时卡顿就降到 2。</p>
+              </div>
+              <div class="bp-select-stack">
+                <label>截图尺寸
+                  <select id="captureSize">
+                    <option value="1365x768">省资源 · 1365 × 768</option>
+                    <option value="1440x900">均衡 · 1440 × 900</option>
+                    <option value="1920x1080">高清 · 1920 × 1080</option>
+                  </select>
+                </label>
+                <label>页面等待时间
+                  <select id="captureDelay">
+                    <option value="1200">较快 · 1.2 秒</option>
+                    <option value="1800">均衡 · 1.8 秒</option>
+                    <option value="2600">稳妥 · 2.6 秒</option>
+                    <option value="4000">慢速网页 · 4 秒</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="bp-setting-card bp-posterize-section">
+            <div class="bp-section-title">
+              <span>裁剪与失败处理</span>
+              <small>控制截图如何变成卡片海报</small>
+            </div>
+            <div class="bp-posterize-grid">
+              <div>
+                <div class="bp-mini-label">裁剪模式</div>
+                <select id="cropMode" hidden>
+                  <option value="smart">智能裁剪 + 去白边</option>
+                  <option value="top">首屏顶部裁剪</option>
+                  <option value="center">居中裁剪</option>
+                </select>
+                <div class="crop-group bp-crop-grid">
+                  <button type="button" class="crop-card bp-crop-card" data-value="smart"><span data-icon="crop"></span><strong>智能裁剪</strong><small>推荐，自动避开空白</small></button>
+                  <button type="button" class="crop-card bp-crop-card" data-value="top"><span data-icon="document"></span><strong>首屏裁剪</strong><small>保留网页顶部信息</small></button>
+                  <button type="button" class="crop-card bp-crop-card" data-value="center"><span data-icon="image"></span><strong>居中裁剪</strong><small>适合视觉类页面</small></button>
+                </div>
+                <div class="toggle-group bp-toggle-grid">
+                  <label class="toggle-pill"><input type="checkbox" data-target="whitePageEnhance"><span><b>白底增强</b><small>浅色页面更清楚</small></span></label>
+                  <label class="toggle-pill"><input type="checkbox" data-target="fallbackToOg"><span><b>失败后自动降级</b><small>用网页封面或本地海报兜底</small></span></label>
+                  <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>缓存原图</b><small>保留结果以便快速加载</small></span></label>
+                  <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>压缩保存</b><small>减小缓存体积</small></span></label>
+                </div>
+              </div>
+              <div class="bp-preview-area">
+                <div class="bp-mini-label">效果预览</div>
+                <div class="bp-preview-flow">
+                  <figure><img src="assets/onboarding/mdn.png" alt="原始网页预览"><figcaption>原始页面</figcaption></figure>
+                  <span class="bp-preview-arrow">→</span>
+                  <figure><img src="assets/onboarding/mdn.png" alt="海报化效果预览"><figcaption>海报化效果</figcaption></figure>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="bp-setting-card bp-backup-section">
+            <div>
+              <div class="bp-section-title compact"><span>开始前的安全网</span><small>批量整理前保留一份完整书签备份</small></div>
+              <div class="bp-backup-actions">
+                <button type="button" class="ghost bp-export-html" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 导出 HTML</button>
+                <button type="button" class="ghost bp-export-json" data-proxy="exportBookmarksJsonBtn"><span data-icon="download"></span> 导出 JSON</button>
+              </div>
+            </div>
+            <div class="bp-backup-state"><span data-icon="shield"></span>最近备份：<b id="thumbnailBackupText">尚未导出</b></div>
+            <label class="bp-risk-check"><input id="requireBackupBeforeOrganize" type="checkbox" checked> 高风险整理前提醒我先备份<small>删除 / 批量移动前提醒备份</small></label>
+          </section>
+
+          <div class="actions-row bp-shot-actions"><button id="generateVisiblePostersBtn" class="primary">立即生成当前海报墙</button><button id="generateVisibleThumbsBtn" class="ghost">先确认再生成</button><button id="clearThumbsBtn" class="ghost danger">清除海报缓存</button></div>
+        </div>
+        <div class="settings-panel" data-panel="ai">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">AI 预整理</span>
+            <div>
+              <h3>先连接服务商，再手动开始整理</h3>
+              <p>AI 默认关闭。开启后也只会在你点击“开始预整理”时处理当前范围。</p>
+            </div>
+            <button type="button" class="primary ai-start-action" data-proxy="saveAndRunAiBtn">保存并开始预整理</button>
+          </div>
+          <div class="settings-status-strip ai-summary-strip">
+            <span><small>服务商</small><b id="aiSummaryProvider">本地模拟</b></span>
+            <span><small>模型</small><b id="aiSummaryModel">local-demo</b></span>
+            <span><small>批量数量</small><b id="aiSummaryBatch">30</b></span>
+            <span><small>隐私模式</small><b id="aiSummaryPrivacy">主动触发</b></span>
+          </div>
+          <section class="settings-section">
+            <label class="switch-line primary-switch"><span><b>启用 AI 预整理</b><small>开启后，顶部和批量栏会显示 AI 整理入口</small></span><input id="aiEnabled" type="checkbox"></label>
+          </section>
+          <section class="settings-section">
+            <div class="section-head"><div><strong>连接信息</strong><small>本地模拟不需要 API Key；接入真实服务商时再填写</small></div></div>
+            <div class="config-grid">
+              <label>服务商模板<select id="providerSelect"><option value="local">本地模拟</option><option value="deepseek">DeepSeek</option><option value="openai">OpenAI 兼容</option><option value="qwen">通义千问</option><option value="openrouter">OpenRouter</option><option value="custom">自定义 API</option></select></label>
+              <label>服务名称<input id="providerName" placeholder="DeepSeek" /></label>
+              <label>Base URL<input id="baseUrl" placeholder="https://api.example.com/v1" /></label>
+              <label>模型<input id="modelName" placeholder="deepseek-chat" /></label>
+              <label>API Key<input id="apiKey" type="password" placeholder="sk-..." /></label>
+              <label>每批处理数量<input id="batchSize" type="number" min="1" max="100" value="30" /></label>
+            </div>
+          </section>
+          <details class="settings-details" open>
+            <summary><span>发送给 AI 的内容</span><small>默认只发送整理所需的书签信息</small></summary>
+            <div class="check-grid"><label><input type="checkbox" checked disabled> 书签标题（必选）</label><label><input type="checkbox" checked disabled> 域名（必选）</label><label><input type="checkbox" checked disabled> URL 路径（必选）</label><label><input type="checkbox" checked disabled> 当前文件夹（必选）</label><label><input type="checkbox" checked disabled> 已有文件夹列表（必选）</label><label><input id="sendMeta" type="checkbox"> 网页 meta description</label><label title="后续版本实现"><input id="sendBody" type="checkbox" disabled> 网页正文摘要（后续）</label></div>
+          </details>
+          <details class="settings-details" open>
+            <summary><span>应用规则</span><small>建议先确认，再批量应用</small></summary>
+            <div class="check-grid"><label><input id="allowRename" type="checkbox"> 允许应用标题优化</label><label title="后续版本实现"><input id="allowCreateFolder" type="checkbox" disabled> 允许建议新建文件夹（后续）</label><label><input type="checkbox" checked disabled> 应用前二次确认</label><label><input type="checkbox" checked disabled> 应用后可撤销</label></div>
+            <label class="range-label">最低显示置信度 <input id="minConfidence" type="number" min="0" max="100" value="70">%</label>
+          </details>
+          <div class="actions-row"><button id="testAiBtn" class="ghost">测试连接</button><button id="saveSettingsBtn" class="primary">保存设置</button><button id="saveAndRunAiBtn" class="primary ai-run-now">保存并开始预整理</button><span id="testResult" class="test-result"></span></div>
+          <p class="privacy-note">API Key 只保存在浏览器本地。真实服务商会收到你主动选择范围内的书签信息。</p>
+        </div>
+        <div class="settings-panel" data-panel="data">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">数据与备份</span>
+            <div>
+              <h3>整理前先留一份可恢复的书签文件</h3>
+              <p>HTML 备份适合重新导入浏览器；JSON 备份适合检查和迁移。</p>
+            </div>
+            <button type="button" class="primary" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 导出 HTML</button>
+          </div>
+          <div class="backup-panel">
+            <div class="backup-title"><span data-icon="shield"></span><div><strong>书签安全备份</strong><p>移动、删除、AI 批量应用建议前，建议先导出一份完整书签。</p></div></div>
+            <div class="backup-meta">最近书签备份：<b id="lastBookmarkBackupText">尚未导出</b></div>
+            <label class="switch-line safety-switch"><span><b>整理前如果未备份则提醒</b><small>第一次执行高风险操作前提醒导出 HTML 备份</small></span><input id="requireBackupBeforeOrganizeData" data-setting-mirror="requireBackupBeforeOrganize" type="checkbox" checked></label>
+            <div class="actions-row"><button id="exportBookmarksHtmlBtn" class="primary"><span data-icon="download"></span> 导出全部书签 HTML</button><button id="exportBookmarksJsonBtn" class="ghost"><span data-icon="download"></span> 导出全部书签 JSON</button></div>
+          </div>
+          <section class="settings-section">
+            <div class="section-head"><div><strong>插件数据</strong><small>只影响书签海报墙自己的设置和推荐记录</small></div></div>
+            <div class="settings-action-row"><button id="exportBtn" class="ghost">导出插件设置</button><button id="clearAiBtn" class="ghost danger">清除 AI 推荐记录</button></div>
+          </section>
+          <p class="hint">书签本体仍由浏览器管理；插件只保存展示设置、截图缓存、AI 配置和整理建议。</p>
+        </div>
+        <div class="settings-panel" data-panel="privacy">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">隐私边界</span>
+            <div>
+              <h3>什么时候会读取、访问或发送数据</h3>
+              <p>这里不需要配置，主要帮助你确认每类权限的用途。</p>
+            </div>
+            <button type="button" class="ghost" data-jump-tab="data"><span data-icon="database"></span> 去备份</button>
+          </div>
+          <div class="security-grid">
+            <div class="security-card"><span data-icon="shield"></span><strong>默认本地保存</strong><p>书签列表、截图缓存和设置保存在本机浏览器。</p></div>
+            <div class="security-card"><span data-icon="image"></span><strong>截图需要访问网页</strong><p>只有生成真实海报时才会打开网页并调用浏览器截图能力。</p></div>
+            <div class="security-card"><span data-icon="sparkle"></span><strong>AI 需要你主动触发</strong><p>开启 AI 后，也只会处理当前可见或选中的书签。</p></div>
+            <div class="security-card"><span data-icon="download"></span><strong>高风险操作先备份</strong><p>删除、批量移动和 AI 应用建议前保留恢复入口。</p></div>
+          </div>
+          <div class="privacy-flow">
+            <span><b>读取书签</b><small>进入管理后读取标题、网址和文件夹</small></span>
+            <span><b>生成海报</b><small>确认后访问网页并缓存截图</small></span>
+            <span><b>AI 整理</b><small>开启并点击开始后发送必要字段</small></span>
+          </div>
+          <p class="privacy-note">建议保留备份提醒。它不会阻止你整理，只是在真正可能改动书签前多给一次确认。</p>
+        </div>
+        <div class="settings-panel" data-panel="about">
+          <div class="settings-page-intro">
+            <span class="settings-kicker">关于</span>
+            <div>
+              <h3>书签海报墙 v0.7.10</h3>
+              <p>一款 Manifest V3 浏览器扩展，用海报墙视图帮助整理 Chrome / Edge 原生书签。</p>
+            </div>
+          </div>
+          <div class="about-grid">
+            <div class="security-card"><span data-icon="bookmark"></span><strong>不替换新标签页</strong><p>只作为独立管理界面使用，不接管浏览器默认入口。</p></div>
+            <div class="security-card"><span data-icon="shield"></span><strong>不强制登录</strong><p>核心功能围绕本地浏览器书签工作。</p></div>
+            <div class="security-card"><span data-icon="sparkle"></span><strong>AI 默认关闭</strong><p>需要你自己配置服务商并主动触发。</p></div>
+            <div class="security-card"><span data-icon="download"></span><strong>设置可导出</strong><p>可在数据页导出插件配置，便于迁移或排查。</p></div>
+          </div>
+          <p class="hint">建议先从“数据”页导出书签备份，再批量整理。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+
+  <div id="onboardingModal" class="modal onboarding-modal">
+    <div class="modal-card onboarding-card onboarding-v076">
+      <div class="onboarding-topline">
+        <div class="onboarding-brand"><span class="brand-icon" data-icon="bookmark"></span><strong>书签海报墙</strong></div>
+        <button id="closeOnboardingX" class="onboarding-close">×</button>
+      </div>
+      <div class="onboarding-title-block">
+        <h2>欢迎使用 <em>书签海报墙</em></h2>
+        <p>将书签转换为真实网页海报，让你的书签管理更直观、更高效、更有灵感。首次进入前会先说明权限用途；点击进入管理会读取浏览器书签列表，但不会自动截图；只有你勾选确认并点击生成后才会访问网页并并发截图。</p>
+      </div>
+      <div class="onboarding-columns">
+        <section class="onboard-column intro-column">
+          <div class="onboard-column-head"><b>1</b><strong>欢迎使用书签海报墙</strong><span data-icon="sparkle"></span></div>
+          <p>书签海报墙会读取浏览器原生书签的标题、网址、文件夹位置和添加时间，用来生成可搜索、可筛选、可移动的卡片视图。</p>
+          <div class="onboard-mini-grid real-preview-grid" aria-label="真实海报预览示例">
+            <img src="assets/onboarding/mdn.png" alt="MDN Web Docs 真实海报示例" loading="lazy" />
+            <img src="assets/onboarding/github.png" alt="GitHub 真实海报示例" loading="lazy" />
+            <img src="assets/onboarding/vue.png" alt="Vue.js 真实海报示例" loading="lazy" />
+            <img src="assets/onboarding/react.png" alt="React 真实海报示例" loading="lazy" />
+            <img src="assets/onboarding/typescript.png" alt="TypeScript 真实海报示例" loading="lazy" />
+            <img src="assets/onboarding/vite.png" alt="Vite 真实海报示例" loading="lazy" />
+          </div>
+          <div class="feature-row"><span data-icon="image"></span><b>真实截图</b><small>所见即所得</small></div>
+          <div class="feature-row"><span data-icon="sparkle"></span><b>自动整理</b><small>分类与标签</small></div>
+          <div class="feature-row"><span data-icon="search"></span><b>高效检索</b><small>瞬间找到</small></div>
+        </section>
+        <section class="onboard-column backup-column">
+          <div class="onboard-column-head"><b>2</b><strong>先做安全备份（推荐）</strong><span data-icon="shield"></span></div>
+          <p>整理前建议导出全部书签，防止误删、批量移动或 AI 应用建议导致数据丢失。</p>
+          <div class="backup-choice"><span class="file-icon code">&lt;/&gt;</span><div><strong>导出全部书签 HTML</strong><small>适合浏览器重新导入与人工查看</small></div><button id="onboardingExportHtml" class="ghost">导出 HTML</button></div>
+          <div class="backup-choice"><span class="file-icon json">{ }</span><div><strong>导出全部书签 JSON</strong><small>适合备份、调试和设备迁移</small></div><button id="onboardingExportJson" class="ghost">导出 JSON</button></div>
+          <div id="onboardingBackupStatus" class="backup-status"><span data-icon="shield"></span> 建议先导出全部书签，确认有备份后再开始移动或删除。</div>
+          <p class="onboard-tip">小贴士：HTML 备份可以在 Chrome / Edge 书签管理器中重新导入。</p>
+        </section>
+        <section class="onboard-column setup-column">
+          <div class="onboard-column-head"><b>3</b><strong>配置真实海报生成</strong><span data-icon="gear"></span></div>
+          <label class="setup-row"><span>截图引擎</span><select id="onboardingStrategy"><option value="debugger-cdp">内置浏览器引擎（推荐）</option><option value="quiet-window">临时窗口截图（兼容）</option><option value="active-tabs">当前窗口标签页截图</option></select></label>
+          <label class="setup-row range-row"><span>并发数量（同时生成数量） <b id="onboardingConcurrentValue">4</b></span><input id="onboardingConcurrent" type="range" min="1" max="63" value="4" /></label>
+          <label class="setup-row number-row"><span>精确并发数</span><input id="onboardingConcurrentNumber" type="number" min="1" max="63" value="4" inputmode="numeric" /></label>
+          <label class="consent-toggle"><input id="onboardingAutoPosterConsent" type="checkbox"><span>我已了解：点击开始后插件会访问网页、并发截图并把海报缓存保存在本机</span></label>
+          <div class="onboard-progress-preview">
+            <div class="preview-cards">
+              <img src="assets/onboarding/mdn.png" alt="MDN 截图预览" loading="lazy">
+              <img src="assets/onboarding/github.png" alt="GitHub 截图预览" loading="lazy">
+              <img src="assets/onboarding/vue.png" alt="Vue 截图预览" loading="lazy">
+              <img src="assets/onboarding/react.png" alt="React 截图预览" loading="lazy">
+              <img src="assets/onboarding/typescript.png" alt="TypeScript 截图预览" loading="lazy">
+              <img src="assets/onboarding/vite.png" alt="Vite 截图预览" loading="lazy">
+            </div>
+            <div class="preview-copy"><strong>等待你的确认</strong><span>点击“开始生成真实海报”后才会访问网页、并发截图并写入本地缓存。</span></div>
+          </div>
+        </section>
+      </div>
+      <div class="onboarding-footer">
+        <label class="dont-show"><input id="onboardingDontShow" type="checkbox"> 下次不再显示此引导</label>
+        <div class="onboarding-actions">
+          <button id="onboardingLater" class="ghost">进入管理</button>
+          <button id="onboardingSettings" class="ghost">打开设置</button>
+          <button id="onboardingGenerate" class="primary">开始生成真实海报</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="moveModal" class="modal"><div class="modal-card compact"><div class="modal-head"><h2>移动到文件夹</h2><button id="closeMoveModal">×</button></div><input id="folderSearch" class="full-input" placeholder="搜索目标文件夹" /><div id="folderList" class="folder-list"></div><div class="create-folder"><input id="newFolderName" placeholder="新建文件夹名称" /><button id="moveCreateBtn" class="primary">新建并移动</button></div></div></div>
+  <div id="editModal" class="modal"><div class="modal-card compact"><div class="modal-head"><h2>书签详情</h2><button id="closeEditModal">×</button></div><label>标题<input id="editTitle" class="full-input" /></label><label>URL<input id="editUrl" class="full-input" /></label><p class="hint">所在位置：<span id="editFolderPath"></span></p><div id="editAiBox"></div><div class="modal-actions"><a id="editOpenBtn" class="ghost link-btn" target="_blank">打开网页</a><button id="editDeleteBtn" class="danger ghost">删除</button><button id="editSaveBtn" class="primary">保存</button></div></div></div>
+  <div id="aiModal" class="modal"><div class="modal-card ai-card"><div class="modal-head"><h2>AI 预整理</h2><button id="closeAiModal">×</button></div><div id="aiModalBody"></div></div></div>
+
+  <div id="toast" class="toast"></div>
+  <div id="undoToast" class="undo-toast"><span id="undoMessage"></span><button id="undoBtn">撤销</button></div>
+
+  <script src="src/bookmark-utils.js?v=0.7.21"></script>
+  <script src="src/app.js?v=0.7.21"></script>
+</body>
+</html>

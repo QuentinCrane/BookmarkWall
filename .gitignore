@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build and release artifacts
+dist/
+*.zip
+*.crx
+
+# Local browser/test state
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Local references and scratch files
+Ref/
+*.log
+npm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
