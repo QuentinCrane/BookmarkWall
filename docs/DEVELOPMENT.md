@@ -23,6 +23,7 @@ src/app.js
 
 ```text
 chrome.tabs.create(about:blank, active:false)
+chrome.tabs.group / chrome.tabGroups.update(折叠的“BookmarkWall 截图工作区”)
 chrome.debugger.attach(tab)
 Page.enable / Network.enable
 Emulation.setDeviceMetricsOverride
@@ -36,6 +37,8 @@ Posterizer 智能裁剪 / 去白边 / 白底增强
 chrome.debugger.detach
 chrome.tabs.remove
 ```
+
+CDP 模式会把扩展打开的临时标签页自动收进一个折叠的浏览器 Tab Group。Chrome / Edge 的完整“工作区”不是通用扩展 API，这里使用 Tab Group 达到隔离和减少标签栏干扰的效果。
 
 ### 2. 临时窗口模式
 
@@ -63,6 +66,7 @@ chrome.tabs.captureVisibleTab
 ## 权限
 
 `debugger` 权限用于 CDP 截图。由于真实网页截图是核心功能，v0.6.0 默认声明该权限。
+`tabGroups` 权限用于把 CDP 临时标签自动收进折叠的截图工作区，避免批量截图时在标签栏展开大量临时页面。
 
 ## 首次使用安全门
 

@@ -96,3 +96,5 @@ ok(css.includes('poster-selected-wash') && css.includes('poster-shot-flash') && 
 ok(app.includes('activeCaptureWindows') && app.includes('activeCaptureTabs'), 'app tracks all temporary screenshot windows and tabs');
 ok(app.includes('cleanupActiveCaptureSurfaces') && app.includes('stopPosterGeneration'), 'stop poster generation closes tracked screenshot surfaces');
 ok(app.includes('chrome.tabs.onRemoved') && app.includes('removedListener'), 'tab-load wait exits when temporary screenshot tabs are closed');
+ok(app.includes('CAPTURE_TAB_GROUP_TITLE') && app.includes('ensureCaptureTabWorkspace'), 'screenshot tabs are collected into a named tab group workspace');
+ok(app.includes("if (strategy === 'active-tabs') return 1"), 'foreground active-tab screenshots run one tab at a time');

@@ -12,6 +12,7 @@
     "bookmarks",
     "storage",
     "tabs",
+    "tabGroups",
     "activeTab",
     "scripting",
     "unlimitedStorage",

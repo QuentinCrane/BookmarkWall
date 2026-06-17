@@ -16,6 +16,8 @@ const THUMBNAIL_SCHEMA_VERSION = 'poster-local-design-v7';
 const POSTER_SESSION_LIMIT = 300;
 const POSTER_VISIBLE_LIMIT = 300;
 const SCREENSHOT_RETRY_WINDOW = 1000 * 60 * 60 * 24 * 2;
+const CAPTURE_TAB_GROUP_TITLE = 'BookmarkWall 截图工作区';
+const CAPTURE_TAB_GROUP_COLOR = 'cyan';
 
 const ProviderTemplates = {
   local: { name: '本地模拟', baseUrl: '', model: 'local-demo', type: 'local' },
@@ -281,6 +283,8 @@ const App = {
   posterStats: { done: 0, total: 0, success: 0, failed: 0 },
   activeCaptureWindows: new Set(),
   activeCaptureTabs: new Set(),
+  activeCaptureTabGroups: new Set(),
+  captureTabGroupsByWindow: new Map(),
   autoPosterStarted: false,
   bookmarksLoaded: false,
   firstRunLocked: false,
@@ -540,6 +544,19 @@ const App = {
     this.bindThumbnailCustomControls();
     this.bindPosterPresetControls();
     this.enhanceToolbarSelects();
+    this.bindCaptureSurfaceCleanupEvents();
+  },
+
+  bindCaptureSurfaceCleanupEvents() {
+    if (this.captureSurfaceCleanupBound) return;
+    this.captureSurfaceCleanupBound = true;
+    const cleanup = () => {
+      if (!this.activeCaptureTabs.size && !this.activeCaptureWindows.size) return;
+      this.posterAbort = true;
+      this.cleanupActiveCaptureSurfaces({ fireAndForget: true });
+    };
+    window.addEventListener('pagehide', cleanup);
+    window.addEventListener('beforeunload', cleanup);
   },
 
   queueMainRender(delayMs = 0) {
@@ -1491,7 +1508,7 @@ const App = {
     const workerTemps = new Map();
     const strategy = this.settings.thumbnails?.screenshotStrategy || 'debugger-cdp';
     const requestedConcurrency = clampConcurrency(this.settings.thumbnails?.concurrent || 4);
-    const concurrency = Math.min(requestedConcurrency, targets.length);
+    const concurrency = this.captureConcurrencyForStrategy(strategy, requestedConcurrency, targets.length);
     let cursor = 0;
 
     const nextTarget = () => {
@@ -1580,6 +1597,12 @@ const App = {
     return '正在当前窗口创建截图标签页';
   },
 
+  captureConcurrencyForStrategy(strategy, requestedConcurrency, total) {
+    const base = Math.min(clampConcurrency(requestedConcurrency || 1), Math.max(1, total || 1));
+    if (strategy === 'active-tabs') return 1;
+    return base;
+  },
+
   async captureBookmarkWithStrategy(bookmark, strategy, getTemp, createTemp) {
     const useCdpFirst = strategy === 'debugger-cdp';
     if (useCdpFirst && this.canUseDebuggerScreenshot()) {
@@ -1644,6 +1667,7 @@ const App = {
     });
     const debuggee = { tabId: tab.id };
     this.trackCaptureTab(tab.id);
+    await this.ensureCaptureTabWorkspace(tab.id, { collapsed: true });
     let attached = false;
     try {
       if (this.posterAbort) throw new Error('截图队列已停止');
@@ -2117,6 +2141,118 @@ const App = {
     return this.generateScreenshotPosters((targets || []).filter((b) => b?.url), { silent: false, reason: 'legacy-manual', forceScreenshot: true });
   },
 
+  canUseCaptureTabGroups() {
+    return Boolean(globalThis.chrome?.tabs?.group && globalThis.chrome?.tabGroups?.update);
+  },
+
+  captureTabGroupIdNone() {
+    return globalThis.chrome?.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
+  },
+
+  getTabByIdSafe(tabId) {
+    return new Promise((resolve) => {
+      if (!globalThis.chrome?.tabs?.get || tabId == null) { resolve(null); return; }
+      try {
+        chrome.tabs.get(tabId, (tab) => {
+          const err = chrome.runtime?.lastError;
+          resolve(err ? null : tab || null);
+        });
+      } catch (_) { resolve(null); }
+    });
+  },
+
+  getWindowByIdSafe(windowId) {
+    return new Promise((resolve) => {
+      if (!globalThis.chrome?.windows?.get || windowId == null) { resolve(null); return; }
+      try {
+        chrome.windows.get(windowId, (win) => {
+          const err = chrome.runtime?.lastError;
+          resolve(err ? null : win || null);
+        });
+      } catch (_) { resolve(null); }
+    });
+  },
+
+  getCaptureTabGroupSafe(groupId) {
+    return new Promise((resolve) => {
+      if (!globalThis.chrome?.tabGroups?.get || groupId == null || groupId === this.captureTabGroupIdNone()) { resolve(null); return; }
+      try {
+        chrome.tabGroups.get(groupId, (group) => {
+          const err = chrome.runtime?.lastError;
+          resolve(err ? null : group || null);
+        });
+      } catch (_) { resolve(null); }
+    });
+  },
+
+  groupTabsSafe(tabIds, groupId = null) {
+    return new Promise((resolve) => {
+      if (!this.canUseCaptureTabGroups() || !tabIds?.length) { resolve(null); return; }
+      const options = { tabIds };
+      if (groupId != null && groupId !== this.captureTabGroupIdNone()) options.groupId = Number(groupId);
+      try {
+        chrome.tabs.group(options, (nextGroupId) => {
+          const err = chrome.runtime?.lastError;
+          resolve(err ? null : nextGroupId);
+        });
+      } catch (_) { resolve(null); }
+    });
+  },
+
+  updateCaptureTabGroup(groupId, options = {}) {
+    return new Promise((resolve) => {
+      if (!this.canUseCaptureTabGroups() || groupId == null || groupId === this.captureTabGroupIdNone()) { resolve(false); return; }
+      try {
+        chrome.tabGroups.update(groupId, {
+          title: CAPTURE_TAB_GROUP_TITLE,
+          color: CAPTURE_TAB_GROUP_COLOR,
+          collapsed: options.collapsed !== false
+        }, () => {
+          const err = chrome.runtime?.lastError;
+          resolve(!err);
+        });
+      } catch (_) { resolve(false); }
+    });
+  },
+
+  async ensureCaptureTabWorkspace(tabId, options = {}) {
+    if (!this.canUseCaptureTabGroups()) return null;
+    const tab = await this.getTabByIdSafe(tabId);
+    if (!tab?.id || tab.windowId == null) return null;
+    const win = await this.getWindowByIdSafe(tab.windowId);
+    if (win?.type && win.type !== 'normal') return null;
+
+    const windowId = Number(tab.windowId);
+    let groupId = this.captureTabGroupsByWindow.get(windowId);
+    if (groupId != null && !(await this.getCaptureTabGroupSafe(groupId))) {
+      this.captureTabGroupsByWindow.delete(windowId);
+      this.activeCaptureTabGroups.delete(Number(groupId));
+      groupId = null;
+    }
+
+    if (groupId != null && tab.groupId !== groupId) {
+      const movedGroupId = await this.groupTabsSafe([tab.id], groupId);
+      if (movedGroupId == null) {
+        this.captureTabGroupsByWindow.delete(windowId);
+        this.activeCaptureTabGroups.delete(Number(groupId));
+        groupId = null;
+      } else {
+        groupId = movedGroupId;
+      }
+    }
+
+    if (groupId == null || groupId === this.captureTabGroupIdNone()) {
+      groupId = await this.groupTabsSafe([tab.id]);
+      if (groupId == null || groupId === this.captureTabGroupIdNone()) return null;
+    }
+
+    groupId = Number(groupId);
+    this.captureTabGroupsByWindow.set(windowId, groupId);
+    this.activeCaptureTabGroups.add(groupId);
+    await this.updateCaptureTabGroup(groupId, { collapsed: options.collapsed !== false });
+    return groupId;
+  },
+
   async createCaptureWindow() {
     if (!globalThis.chrome?.windows?.create) return null;
     const viewport = this.captureViewportProfile();
@@ -2193,6 +2329,7 @@ const App = {
       });
     });
     this.trackCaptureTab(tab.id);
+    await this.ensureCaptureTabWorkspace(tab.id, { collapsed: false });
     try {
       if (this.posterAbort) throw new Error('截图队列已停止');
       await this.waitForTabComplete(tab.id, Number(this.settings.thumbnails?.captureTimeout || 15000));
@@ -2230,17 +2367,33 @@ const App = {
 
   removeWindowSafe(windowId) {
     return new Promise((resolve) => {
-      this.untrackCaptureWindow(windowId);
-      try { chrome.windows.remove(windowId, () => resolve()); }
-      catch (_) { resolve(); }
+      if (!globalThis.chrome?.windows?.remove || windowId == null) { this.untrackCaptureWindow(windowId); resolve(false); return; }
+      try {
+        chrome.windows.remove(windowId, () => {
+          this.untrackCaptureWindow(windowId);
+          const err = chrome.runtime?.lastError;
+          resolve(!err);
+        });
+      } catch (_) {
+        this.untrackCaptureWindow(windowId);
+        resolve(false);
+      }
     });
   },
 
   removeTabSafe(tabId) {
     return new Promise((resolve) => {
-      this.untrackCaptureTab(tabId);
-      try { chrome.tabs.remove(tabId, () => resolve()); }
-      catch (_) { resolve(); }
+      if (!globalThis.chrome?.tabs?.remove || tabId == null) { this.untrackCaptureTab(tabId); resolve(false); return; }
+      try {
+        chrome.tabs.remove(tabId, () => {
+          this.untrackCaptureTab(tabId);
+          const err = chrome.runtime?.lastError;
+          resolve(!err);
+        });
+      } catch (_) {
+        this.untrackCaptureTab(tabId);
+        resolve(false);
+      }
     });
   },
 
@@ -2253,22 +2406,34 @@ const App = {
   },
 
   untrackCaptureWindow(windowId) {
-    if (windowId != null) this.activeCaptureWindows.delete(Number(windowId));
+    if (windowId == null) return;
+    const numericWindowId = Number(windowId);
+    this.activeCaptureWindows.delete(numericWindowId);
+    const groupId = this.captureTabGroupsByWindow.get(numericWindowId);
+    if (groupId != null) this.activeCaptureTabGroups.delete(Number(groupId));
+    this.captureTabGroupsByWindow.delete(numericWindowId);
   },
 
   untrackCaptureTab(tabId) {
     if (tabId != null) this.activeCaptureTabs.delete(Number(tabId));
   },
 
-  async cleanupActiveCaptureSurfaces() {
+  async cleanupActiveCaptureSurfaces(options = {}) {
     const windows = [...this.activeCaptureWindows];
     const tabs = [...this.activeCaptureTabs];
     this.activeCaptureWindows.clear();
     this.activeCaptureTabs.clear();
-    await Promise.all([
+    this.activeCaptureTabGroups.clear();
+    this.captureTabGroupsByWindow.clear();
+    const jobs = [
       ...windows.map((windowId) => this.removeWindowSafe(windowId)),
       ...tabs.map((tabId) => this.removeTabSafe(tabId))
-    ]);
+    ];
+    if (options.fireAndForget) {
+      jobs.forEach((job) => job.catch?.(() => {}));
+      return;
+    }
+    await Promise.all(jobs);
   },
 
   async stopPosterGeneration(message = '正在停止截图队列，并关闭临时截图窗口') {
@@ -2673,11 +2838,12 @@ const App = {
 
   renderSettingsSummaries() {
     const strategy = $('#screenshotStrategy')?.value || this.settings.thumbnails?.screenshotStrategy || 'debugger-cdp';
-    const strategyLabel = strategy === 'debugger-cdp' ? '增强 CDP' : strategy === 'quiet-window' ? '临时窗口' : '公开封面';
+    const strategyLabel = strategy === 'debugger-cdp' ? '增强 CDP' : strategy === 'quiet-window' ? '临时窗口' : '当前标签页';
     const viewport = ($('#captureSize')?.value || `${this.settings.thumbnails?.captureWidth || 1440}x${this.settings.thumbnails?.captureHeight || 900}`).replace('x', ' × ');
     const concurrent = clampConcurrency($('#posterConcurrentNumber')?.value || $('#posterConcurrent')?.value || this.settings.thumbnails?.concurrent || 4);
+    const effectiveConcurrent = strategy === 'active-tabs' ? '1（前台）' : String(concurrent);
     if ($('#shotSummaryEngine')) $('#shotSummaryEngine').textContent = strategyLabel;
-    if ($('#shotSummaryConcurrent')) $('#shotSummaryConcurrent').textContent = String(concurrent);
+    if ($('#shotSummaryConcurrent')) $('#shotSummaryConcurrent').textContent = effectiveConcurrent;
     if ($('#shotSummaryViewport')) $('#shotSummaryViewport').textContent = viewport;
     if ($('#shotSummaryBackup')) $('#shotSummaryBackup').textContent = ($('#requireBackupBeforeOrganize')?.checked ?? true) ? '备份提醒开启' : '未强制提醒';
 
