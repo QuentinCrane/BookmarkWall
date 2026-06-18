@@ -90,6 +90,8 @@ ok(css.includes('.onboarding-columns') && css.includes('repeat(3,minmax(0,1fr))'
 ok(css.includes('aspect-ratio:16/9'), 'mobile landscape posters keep real screenshot aspect ratio');
 ok(html.includes('settings-status-strip') && html.includes('settings-dock'), 'settings pages expose summary strips and sticky action dock');
 ok(html.includes('默认后台生成，失败会降级并标记') && html.includes('会打开独立窗口，仅主动补拍时使用'), 'settings explain quiet default capture and explicit window recapture');
+ok(html.includes('repairFailedPostersBtn') && html.includes('一键补拍失败海报'), 'settings expose one-click failed poster repair');
+ok(app.includes('repairFailedPosters') && app.includes("reason: 'repair-failed'"), 'app can batch repair failed screenshot posters');
 ok(app.includes('renderSettingsHeader') && app.includes('handleSettingsDockPrimary'), 'settings dock actions change by active tab');
 ok(css.includes('.bp-setting-card') && css.includes('.bp-choice-card'), 'CSS includes settings operation and visual refinement pass');
 ok(css.includes('.setting-hero-card') && css.includes('.security-card'), 'CSS includes restrained settings surfaces and readable card footers');

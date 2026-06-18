@@ -156,6 +156,16 @@
               <input id="autoGeneratePosters" type="checkbox" checked>
             </label>
           </div>
+          <section class="settings-section failed-repair-card">
+            <div class="section-head">
+              <div><strong>截图失败修复</strong><small>只处理已标记失败的海报，不重跑已成功的截图</small></div>
+              <span id="failedPosterCount" class="section-badge">暂无失败</span>
+            </div>
+            <div class="failed-repair-row">
+              <div><b>兼容补拍失败项</b><small>临时使用窗口截图、低并发和更长等待，完成后恢复当前预设</small></div>
+              <button type="button" id="repairFailedPostersBtn" class="primary"><span data-icon="refresh"></span> 一键补拍失败海报</button>
+            </div>
+          </section>
           <input id="posterMode" type="hidden" value="screenshot-first">
           <input id="posterLimit" type="hidden" value="300">
           <input id="posterVisibleLimit" type="hidden" value="300">

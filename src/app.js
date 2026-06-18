@@ -490,6 +490,11 @@ const App = {
     });
     $('#generateVisiblePostersBtn')?.addEventListener('click', () => { this.closeModal('#settingsModal'); this.generatePostersForVisible(true); });
     $('#generateVisibleThumbsBtn')?.addEventListener('click', () => { this.closeModal('#settingsModal'); this.openThumbnailConfirm('visible'); });
+    $('#repairFailedPostersBtn')?.addEventListener('click', async () => {
+      await this.collectAndSaveSettings({ silent: true });
+      this.closeModal('#settingsModal');
+      await this.repairFailedPosters('all');
+    });
     $('#clearThumbsBtn')?.addEventListener('click', () => this.clearThumbnailCache());
     $('#cancelSelectionBtn').addEventListener('click', () => this.clearSelection());
     $('#undoBtn').addEventListener('click', () => this.undo());
@@ -1086,14 +1091,16 @@ const App = {
 
   renderThumbnailGuide(list) {
     if (!list.length) return '';
-    if (this.thumbnailGuideDismissed && !this.posterQueueRunning) return '';
     let missing = 0;
     let screenshotCount = 0;
+    let failedCount = 0;
     for (const b of list) {
       const thumb = this.getThumbnailForBookmark(b);
       if (this.needsPosterGeneration(b, thumb)) missing += 1;
+      if (this.isFailedPosterThumb(thumb)) failedCount += 1;
       if (thumb?.source === 'screenshot') screenshotCount += 1;
     }
+    if (this.thumbnailGuideDismissed && !this.posterQueueRunning && !failedCount) return '';
     const generated = list.length - missing;
     const autoOn = this.settings.thumbnails?.autoGenerate !== false;
     const total = Math.max(1, list.length);
@@ -1132,6 +1139,15 @@ const App = {
     const desc = autoOn
       ? `当前 ${screenshotCount}/${list.length} 个书签已有真实截图；缺失项会优先用增强 CDP 模式生成真实首屏海报。`
       : '点击后会优先使用增强 CDP 模式后台生成真实网页截图，失败时降级并在卡片标记。';
+    if (failedCount) {
+      const allFailedCount = this.getFailedPosterBookmarks('all').length;
+      return `<div class="thumbnail-guide design-pill repair-needed${guideStateClass}">
+        ${guideControls}
+        <div class="guide-status"><span class="progress-dot warning" style="--p:${progress}"></span><div class="guide-copy"><strong>发现 ${failedCount} 个截图失败海报</strong><span>将一次性补拍全部失败项（共 ${allFailedCount} 个），使用兼容窗口、低并发和更长等待时间。</span></div></div>
+        <div class="guide-meter"><i style="width:${progress}%"></i></div>
+        <div class="guide-actions"><button id="guideRepairFailedPosters" class="primary">一键补拍失败项</button><button id="guideLearnThumbs" class="ghost">查看引导</button></div>
+      </div>`;
+    }
     return `<div class="thumbnail-guide design-pill${guideStateClass}">
       ${guideControls}
       <div class="guide-status"><span class="progress-dot ready" style="--p:${progress}"></span><div class="guide-copy"><strong>${title}</strong><span>${desc}</span></div></div>
@@ -1151,6 +1167,7 @@ const App = {
       }
       this.generatePostersForVisible(true);
     });
+    $('#guideRepairFailedPosters')?.addEventListener('click', () => this.repairFailedPosters('all'));
     $('#guideStopPosters')?.addEventListener('click', () => this.stopPosterGeneration('正在停止海报生成队列，并关闭临时截图窗口'));
     $('#guideLearnThumbs')?.addEventListener('click', () => this.maybeShowOnboarding(true));
   },
@@ -1275,7 +1292,7 @@ const App = {
   },
 
   thumbnailFailureState(thumb) {
-    const failed = Boolean(thumb?.status === 'failed' || thumb?.screenshotFailedAt);
+    const failed = this.isFailedPosterThumb(thumb);
     const hardFailed = thumb?.status === 'failed';
     const label = hardFailed ? this.t('posterFailed') : this.t('screenshotFailed');
     const text = thumb?.failedReason || thumb?.screenshotError || (hardFailed ? '海报生成失败' : '真实截图失败，已使用降级封面');
@@ -1285,6 +1302,19 @@ const App = {
       text,
       badge: failed ? `<span class="shot-failure-badge" title="${escapeAttr(text)}">${escapeHtml(label)}</span>` : ''
     };
+  },
+
+  isFailedPosterThumb(thumb) {
+    return Boolean(thumb?.status === 'failed' || thumb?.screenshotFailedAt);
+  },
+
+  getFailedPosterBookmarks(scope = 'all') {
+    const source = scope === 'visible' ? this.getVisibleBookmarks() : this.bookmarks;
+    return (source || []).filter((bookmark) => (
+      bookmark?.url &&
+      /^https?:/i.test(bookmark.url) &&
+      this.isFailedPosterThumb(this.getThumbnailForBookmark(bookmark))
+    ));
   },
 
   renderCard(bookmark, index = 0) {
@@ -1440,6 +1470,55 @@ const App = {
     if (!list.length) { this.showToast('当前海报墙已经有真实截图或无需重新生成'); return; }
     const limit = this.posterLimitForBatch(this.settings.thumbnails?.visibleLimit, POSTER_VISIBLE_LIMIT, list.length);
     await this.generatePosters(list.slice(0, limit), { silent: false, reason: 'manual-visible', forceScreenshot: true });
+  },
+
+  async repairFailedPosters(scope = 'all') {
+    if (!this.hasPosterGenerationConsent()) {
+      await this.maybeShowOnboarding(true);
+      this.showToast('请先阅读引导并确认允许生成真实海报');
+      return;
+    }
+    if (this.posterQueueRunning) {
+      this.showToast('海报队列正在运行，请稍后再补拍失败项');
+      return;
+    }
+    const targets = this.getFailedPosterBookmarks(scope);
+    if (!targets.length) {
+      this.showToast('当前没有需要补拍的失败海报');
+      this.renderSettingsSummaries();
+      return;
+    }
+    const limit = this.posterLimitForBatch(this.settings.thumbnails?.backgroundLimit, POSTER_SESSION_LIMIT, targets.length);
+    const repairSettings = {
+      screenshotStrategy: 'quiet-window',
+      concurrent: Math.min(2, Math.max(1, targets.length)),
+      captureDelay: Math.max(Number(this.settings.thumbnails?.captureDelay || 1800), 2600),
+      captureTimeout: Math.max(Number(this.settings.thumbnails?.captureTimeout || 18000), 24000),
+      captureWidth: 1365,
+      captureHeight: 768,
+      cropMode: 'top',
+      askPermission: true,
+      fallbackToOg: true
+    };
+    this.showToast(`开始补拍 ${targets.length} 个失败海报`);
+    await this.withTemporaryThumbnailSettings(repairSettings, async () => {
+      await this.generateScreenshotPosters(targets.slice(0, limit), { silent: false, reason: 'repair-failed', forceScreenshot: true });
+    });
+    const remaining = this.getFailedPosterBookmarks(scope).length;
+    this.showToast(remaining ? `补拍完成，仍有 ${remaining} 个需要稍后再试` : '失败海报已全部补拍完成');
+    this.renderSettingsSummaries();
+  },
+
+  async withTemporaryThumbnailSettings(partial, task) {
+    const previous = { ...(this.settings.thumbnails || {}) };
+    this.settings.thumbnails = { ...previous, ...partial };
+    try {
+      return await task();
+    } finally {
+      this.settings.thumbnails = previous;
+      this.renderSettingsSummaries?.();
+      this.syncPosterPresetCards?.();
+    }
   },
 
   async generatePosters(bookmarks, options = {}) {
@@ -2877,6 +2956,9 @@ const App = {
     if ($('#shotSummaryConcurrent')) $('#shotSummaryConcurrent').textContent = effectiveConcurrent;
     if ($('#shotSummaryViewport')) $('#shotSummaryViewport').textContent = viewport;
     if ($('#shotSummaryBackup')) $('#shotSummaryBackup').textContent = ($('#requireBackupBeforeOrganize')?.checked ?? true) ? '备份提醒开启' : '未强制提醒';
+    const failedPosters = this.getFailedPosterBookmarks('all').length;
+    if ($('#failedPosterCount')) $('#failedPosterCount').textContent = failedPosters ? `${failedPosters} 个失败` : '暂无失败';
+    if ($('#repairFailedPostersBtn')) $('#repairFailedPostersBtn').disabled = !failedPosters || this.posterQueueRunning;
 
     if ($('#aiSummaryProvider')) $('#aiSummaryProvider').textContent = $('#providerName')?.value || ProviderTemplates[$('#providerSelect')?.value || 'local']?.name || '本地模拟';
     if ($('#aiSummaryModel')) $('#aiSummaryModel').textContent = $('#modelName')?.value || 'local-demo';
