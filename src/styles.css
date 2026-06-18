@@ -941,6 +941,16 @@ svg.ui-icon{
   box-shadow:0 14px 30px rgba(31,47,74,.12);
 }
 
+.poster-card.shot-failed{
+  border-color:#f0c36a;
+  background:#fffaf1;
+}
+
+.poster-card.shot-failed:hover{
+  border-color:#d69b2f;
+  box-shadow:0 14px 30px rgba(151,99,23,.14);
+}
+
 .poster-grid.view-switching .poster-card{
   will-change:transform,opacity;
   animation:poster-card-enter .38s var(--ease-out) both;
@@ -1054,6 +1064,27 @@ svg.ui-icon{
 
 .poster-glass{
   display:none;
+}
+
+.shot-failure-badge{
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:3;
+  max-width:calc(100% - 20px);
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 8px;
+  border:1px solid rgba(180,83,9,.26);
+  border-radius:999px;
+  background:rgba(255,250,241,.94);
+  color:#92400e;
+  box-shadow:0 8px 18px rgba(120,53,15,.14);
+  font-size:10.5px;
+  line-height:22px;
+  font-weight:900;
+  white-space:nowrap;
 }
 
 .select-dot,
@@ -1234,7 +1265,8 @@ svg.ui-icon{
 .folder-tag,
 .thumb-tag,
 .ai-tag,
-.date-tag{
+.date-tag,
+.failure-tag{
   min-width:0;
   height:16px;
   display:inline-flex;
@@ -1257,8 +1289,15 @@ svg.ui-icon{
   color:var(--primary);
 }
 
+.failure-tag{
+  width:100%;
+  background:transparent;
+  color:#a16207;
+}
+
 .folder-tag .ui-icon,
-.tag-icon{
+.tag-icon,
+.failure-tag .ui-icon{
   width:11px;
   height:11px;
   flex:0 0 auto;

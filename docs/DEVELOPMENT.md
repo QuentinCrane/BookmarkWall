@@ -7,7 +7,7 @@ index.html
   ↓
 src/app.js
   ├─ BookmarkAdapter：读写 Chrome/Edge 原生书签
-  ├─ Poster Engine：真实截图 / 网页封面 / favicon 生成海报
+  ├─ Poster Engine：真实截图 / 网页封面 / 本地设计海报
   ├─ AIService：OpenAI-Compatible / 本地模拟预整理
   ├─ Drag & Batch：拖拽、多选、批量移动、撤销
   └─ Settings：AI、截图、缓存和显示设置
@@ -40,9 +40,11 @@ chrome.tabs.remove
 
 CDP 模式会把扩展打开的临时标签页自动收进一个折叠的浏览器 Tab Group。Chrome / Edge 的完整“工作区”不是通用扩展 API，这里使用 Tab Group 达到隔离和减少标签栏干扰的效果。
 
+默认 CDP 模式失败后不会自动打开临时窗口，而是进入网页公开封面 / 本地海报降级流程，并在卡片上标记“截图失败”。这样可以优先保证批量生成过程足够安静。
+
 ### 2. 临时窗口模式
 
-CDP 失败或用户手动选择时使用。
+用户手动选择“兼容补拍”时使用，不作为默认 CDP 自动降级路径。
 
 ```text
 chrome.windows.create(popup)
@@ -56,17 +58,16 @@ chrome.tabs.captureVisibleTab
 
 ### 3. 降级策略
 
-真实截图失败后依次尝试：
+真实截图失败后依次尝试，并保留失败标记：
 
 1. `og:image`
 2. `twitter:image`
-3. favicon
-4. 模拟网页占位海报
+3. 本地设计海报
 
 ## 权限
 
 `debugger` 权限用于 CDP 截图。由于真实网页截图是核心功能，v0.6.0 默认声明该权限。
-`tabGroups` 权限用于把 CDP 临时标签自动收进折叠的截图工作区，避免批量截图时在标签栏展开大量临时页面。
+`tabGroups` 权限用于把 CDP 临时标签自动收进折叠的截图工作区，避免批量截图时在标签栏展开大量临时页面。`windows` 能力只在用户主动选择临时窗口补拍时使用。
 
 ## 首次使用安全门
 

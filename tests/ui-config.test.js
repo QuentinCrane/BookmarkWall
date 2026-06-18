@@ -31,6 +31,8 @@ ok(app.includes('drawFallbackStatusBand'), 'fallback poster includes polished lo
 ok(app.includes('fallbackPosterTheme'), 'fallback poster uses deterministic design themes');
 ok(app.includes("poster-local-design-v7"), 'app bumps thumbnail schema to purge old strip caches and old fallback cards');
 ok(!app.includes("source: 'favicon'"), 'fallback poster never stores favicon-only posters as final covers');
+ok(app.includes('using marked poster fallback') && !app.includes('fallback to window capture'), 'default CDP failures use marked poster fallback instead of opening windows');
+ok(app.includes('screenshotFailedAt') && app.includes('shot-failure-badge'), 'poster cards preserve and render screenshot failure state');
 console.log('UI config tests passed.');
 const css = fs.readFileSync('src/styles.css', 'utf8');
 ok(css.includes('--shot-h:160px') && css.includes('--body-h:46px'), 'CSS includes strict poster card geometry lock');
@@ -38,6 +40,7 @@ ok(css.includes('aspect-ratio:16/9'), 'poster cover uses fixed 16:9 aspect ratio
 ok(css.includes('text-overflow:ellipsis') && css.includes('white-space:nowrap'), 'bookmark titles are kept inside card bounds');
 ok(css.includes('repeat(auto-fill,minmax(var(--card-w),1fr))'), 'large poster grid uses fixed reference card tracks');
 ok(css.includes('--card-w:210px'), 'mobile poster grid prevents horizontal overflow');
+ok(css.includes('.shot-failure-badge') && css.includes('.failure-tag'), 'failed poster cards have dedicated visible markers');
 
 ok(app.includes('posterConsentGranted'), 'poster generation requires explicit onboarding consent');
 ok(app.includes('if (this.hasPosterGenerationConsent())') && app.includes("setTimeout(() => this.kickoffAutoPosters('initial'), 900);"), 'initial auto poster generation is gated by explicit consent');
@@ -84,6 +87,7 @@ ok(css.includes('.settings-card') && css.includes('grid-template-columns:1fr'), 
 ok(css.includes('.onboarding-columns') && css.includes('repeat(3,minmax(0,1fr))'), 'mobile toolbar uses compact three-column controls');
 ok(css.includes('aspect-ratio:16/9'), 'mobile landscape posters keep real screenshot aspect ratio');
 ok(html.includes('settings-status-strip') && html.includes('settings-dock'), 'settings pages expose summary strips and sticky action dock');
+ok(html.includes('默认后台生成，失败会降级并标记') && html.includes('会打开独立窗口，仅主动补拍时使用'), 'settings explain quiet default capture and explicit window recapture');
 ok(app.includes('renderSettingsHeader') && app.includes('handleSettingsDockPrimary'), 'settings dock actions change by active tab');
 ok(css.includes('.bp-setting-card') && css.includes('.bp-choice-card'), 'CSS includes settings operation and visual refinement pass');
 ok(css.includes('.setting-hero-card') && css.includes('.security-card'), 'CSS includes restrained settings surfaces and readable card footers');

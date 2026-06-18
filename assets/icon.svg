@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="BookmarkWall icon">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13b8ff"/>
+      <stop offset=".58" stop-color="#245edb"/>
+      <stop offset="1" stop-color="#153b9f"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="64" y1="20" x2="64" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset=".48" stop-color="#1fb6f2"/>
+      <stop offset="1" stop-color="#1182df"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#0f2c7a" flood-opacity=".24"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <g filter="url(#softShadow)">
+    <rect x="22" y="24" width="38" height="34" rx="9" fill="#fff" opacity=".96"/>
+    <rect x="68" y="24" width="38" height="34" rx="9" fill="#fff" opacity=".96"/>
+    <rect x="22" y="70" width="38" height="34" rx="9" fill="#fff" opacity=".96"/>
+    <rect x="68" y="70" width="38" height="34" rx="9" fill="#fff" opacity=".96"/>
+    <path d="M27 51 38 40l9 9 8-8v12H27z" fill="#bdd7ff"/>
+    <path d="M73 51 84 40l9 9 8-8v12H73z" fill="#bdd7ff"/>
+    <path d="M27 97 38 86l9 9 8-8v12H27z" fill="#bdd7ff"/>
+    <path d="M73 97 84 86l9 9 8-8v12H73z" fill="#bdd7ff"/>
+    <circle cx="35" cy="35" r="4.5" fill="#d7e7ff"/>
+    <circle cx="81" cy="35" r="4.5" fill="#d7e7ff"/>
+    <circle cx="35" cy="81" r="4.5" fill="#d7e7ff"/>
+    <circle cx="81" cy="81" r="4.5" fill="#d7e7ff"/>
+  </g>
+  <path d="M50 18h28c4.4 0 8 3.6 8 8v82.5c0 3.3-3.8 5.2-6.5 3.1L64 99.2l-15.5 12.4c-2.7 2.1-6.5.2-6.5-3.1V26c0-4.4 3.6-8 8-8z" fill="#7ee7f6" opacity=".98"/>
+  <path d="M53 24h22c2.8 0 5 2.2 5 5v72.3L64 88.5 48 101.3V29c0-2.8 2.2-5 5-5z" fill="url(#ribbon)"/>
+</svg>

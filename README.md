@@ -10,7 +10,7 @@ BookmarkWall 是一个 Manifest V3 浏览器扩展，用海报墙的方式整理
 - 海报墙视图：统一 16:9 或竖向海报卡片，优先展示本地预览，授权后生成真实网页截图
 - 整理操作：多选、拖拽移动、编辑标题/URL、删除、撤销和批量移动
 - 安全备份：首次引导和设置页都提供全部书签 HTML / JSON 导出
-- 截图管线：支持增强 CDP 截图、临时窗口截图、公开网页封面、本地设计海报兜底
+- 截图管线：支持增强 CDP 后台截图、手动临时窗口补拍、公开网页封面、本地设计海报兜底
 - 并发控制：截图队列支持 1-63 并发，可停止，并显示进度
 - 可选 AI：支持 OpenAI-Compatible API，默认关闭，建议必须预览确认后才会应用
 - 本地优先：书签、截图缓存、设置和 API Key 保存在本机扩展存储中
@@ -73,12 +73,12 @@ npm test
 
 ```text
 index.html              扩展主页面
-background.js           MV3 service worker，点击扩展图标时打开主页面
+background.js           MV3 service worker，点击扩展图标时打开或切回主页面
 manifest.json           扩展清单和权限声明
 src/app.js              主应用逻辑、截图队列、AI 设置和交互
 src/bookmark-utils.js   书签树处理、URL 归一化和本地推荐工具
 src/styles.css          主界面样式
-assets/                 图标和首次引导预览图
+assets/                 扩展图标、SVG 图标源文件和首次引导预览图
 docs/                   隐私、开发、测试、发布和设计说明
 tests/                  Node.js 静态测试
 ```
@@ -100,7 +100,8 @@ BookmarkWall 申请的权限都用于本地书签整理和海报生成：
 
 - `bookmarks`：读取、移动、重命名和删除浏览器原生书签
 - `storage` / `unlimitedStorage`：保存设置、截图缓存、AI 建议和本地状态
-- `tabs` / `activeTab`：创建截图标签页、恢复原标签页和执行备用截图
+- `tabs` / `activeTab`：创建截图标签页、恢复原标签页、打开或切回主页面，并执行备用截图
+- `tabGroups`：把批量截图临时标签页收进折叠的“BookmarkWall 截图工作区”，减少标签栏干扰
 - `scripting`：截图前滚动页面到顶部，减少截到中间位置的概率
 - `debugger`：通过 Chrome DevTools Protocol 生成真实网页截图
 - `http://*/*` / `https://*/*`：访问用户书签对应网页，用于截图或读取公开封面

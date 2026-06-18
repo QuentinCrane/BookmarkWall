@@ -39,6 +39,7 @@ const I18N = {
     landscape: '横向海报', portrait: '竖向海报', aiRun: 'AI 预整理', aiSetup: '开启 AI', aiDisabled: '未启用',
     aiReady: '{model} 已启用', bookmarkCount: '{count} 个书签', selectedCount: '已选择 {count} 项',
     realShot: '真实截图', realSample: '真实示例', ogCover: '网页封面', posterCover: '海报封面', siteIcon: '站点图标',
+    screenshotFailed: '截图失败', posterFailed: '生成失败',
     unnamedBookmark: '未命名书签', uncategorized: '未分类', localPreview: '本地预览', posterAfterConsent: '同意后生成真实海报',
     aiSettingsToast: '请先在设置中启用 AI 预整理，保存后点击顶部按钮开始', empty: '当前没有可处理的书签'
   },
@@ -52,6 +53,7 @@ const I18N = {
     landscape: 'Landscape poster', portrait: 'Portrait poster', aiRun: 'AI Organize', aiSetup: 'Set up AI', aiDisabled: 'Off',
     aiReady: '{model} ready', bookmarkCount: '{count} bookmarks', selectedCount: '{count} selected',
     realShot: 'Screenshot', realSample: 'Real preview', ogCover: 'Page cover', posterCover: 'Poster cover', siteIcon: 'Site icon',
+    screenshotFailed: 'Shot failed', posterFailed: 'Failed',
     unnamedBookmark: 'Untitled bookmark', uncategorized: 'Uncategorized', localPreview: 'Local preview', posterAfterConsent: 'Generate real poster after consent',
     aiSettingsToast: 'Enable AI in Settings, save it, then use the top AI button to start', empty: 'No bookmarks to process'
   }
@@ -1129,7 +1131,7 @@ const App = {
     const title = autoOn ? '真实网页截图会自动生成' : '当前显示的是占位 / 网页封面';
     const desc = autoOn
       ? `当前 ${screenshotCount}/${list.length} 个书签已有真实截图；缺失项会优先用增强 CDP 模式生成真实首屏海报。`
-      : '点击后会优先使用增强 CDP 模式生成真实网页截图，失败时自动切换临时窗口。';
+      : '点击后会优先使用增强 CDP 模式后台生成真实网页截图，失败时降级并在卡片标记。';
     return `<div class="thumbnail-guide design-pill${guideStateClass}">
       ${guideControls}
       <div class="guide-status"><span class="progress-dot ready" style="--p:${progress}"></span><div class="guide-copy"><strong>${title}</strong><span>${desc}</span></div></div>
@@ -1265,17 +1267,22 @@ const App = {
     const thumb = this.getThumbnailForBookmark(bookmark);
     const imageSrc = this.settings.thumbnails?.useReal !== false ? (thumb?.dataUrl || thumb?.imageUrl || '') : '';
     const hasPosterImage = Boolean(imageSrc && thumb?.status !== 'failed');
+    const shotFailed = Boolean(thumb?.status === 'failed' || thumb?.screenshotFailedAt);
+    const failedHard = thumb?.status === 'failed';
+    const failureLabel = failedHard ? this.t('posterFailed') : this.t('screenshotFailed');
+    const failureText = thumb?.failedReason || thumb?.screenshotError || (failedHard ? '海报生成失败' : '真实截图失败，已使用降级封面');
+    const failureBadge = shotFailed ? `<span class="shot-failure-badge" title="${escapeAttr(failureText)}">${escapeHtml(failureLabel)}</span>` : '';
     const thumbLabel = thumb?.source === 'screenshot' ? this.t('realShot')
       : (thumb?.source === 'bundled-real-preview' ? this.t('realSample')
       : (thumb?.source === 'og-image' ? this.t('ogCover')
         : (thumb?.source === 'fallback-card' ? this.t('posterCover')
           : (thumb?.source === 'favicon' ? this.t('siteIcon') : ''))));
     const poster = hasPosterImage
-      ? `<div class="poster-shot has-real source-${escapeHtml(thumb.source || 'poster')}"><img class="poster-img" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(bookmark.title || '')}" loading="lazy"><div class="poster-glass"><span>${escapeHtml(thumbLabel || domain)}</span></div></div>`
-      : this.renderLocalCover(bookmark, domain);
+      ? `<div class="poster-shot has-real source-${escapeHtml(thumb.source || 'poster')}">${failureBadge}<img class="poster-img" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(bookmark.title || '')}" loading="lazy"><div class="poster-glass"><span>${escapeHtml(thumbLabel || domain)}</span></div></div>`
+      : this.renderLocalCover(bookmark, domain, failureBadge);
     const localIcon = localBookmarkIconDataUri(domain || bookmark.title || 'bookmark');
     const realIcon = siteFaviconUrl(bookmark.url) || localIcon;
-    return `<article class="poster-card ${selected ? 'selected' : ''}" draggable="true" data-id="${escapeHtml(bookmark.id)}" style="--stagger:${Math.min(index, 18)}">
+    return `<article class="poster-card ${selected ? 'selected' : ''} ${shotFailed ? 'shot-failed' : ''}" draggable="true" data-id="${escapeHtml(bookmark.id)}" style="--stagger:${Math.min(index, 18)}">
       ${poster}
       <div class="card-body">
         <div class="card-head">
@@ -1285,6 +1292,7 @@ const App = {
         </div>
         <div class="domain-line">${escapeHtml(domain)}</div>
         <div class="tag-row">
+          ${shotFailed ? `<span class="failure-tag" title="${escapeAttr(failureText)}">${iconSvg('warning', 'tag-icon')} ${escapeHtml(failureLabel)}</span>` : ''}
           ${rec && this.settings.ai.enabled ? `<span class="ai-tag" title="${escapeHtml(rec.reason || '')}">✦ ${escapeHtml(shorten(rec.suggestedFolder || 'AI 建议', 20))}</span>` : ''}
           ${this.settings.showFolderTag ? `<span class="folder-tag" title="${escapeAttr(folder)}">${iconSvg('folder', 'tag-icon')} ${escapeHtml(folder)}</span>` : ''}
           ${hasPosterImage ? `<span class="thumb-tag">${escapeHtml(thumbLabel || '海报')}</span>` : ''}
@@ -1294,7 +1302,7 @@ const App = {
     </article>`;
   },
 
-  renderLocalCover(bookmark, domain) {
+  renderLocalCover(bookmark, domain, statusBadge = '') {
     const normalizedDomain = normalizeDisplayDomain(domain || BookmarkUtils.getDomain(bookmark.url) || 'website');
     const title = normalizePosterTitle(bookmark.title || normalizedDomain, normalizedDomain);
     const theme = localCoverTheme(normalizedDomain, title);
@@ -1313,6 +1321,7 @@ const App = {
           </div>
         </div>
       </div>
+      ${statusBadge}
       <span class="shot-hint">${escapeHtml(this.t('localPreview'))}</span>
     </div>`;
   },
@@ -1582,9 +1591,9 @@ const App = {
       await this.loadBookmarks();
       this.render();
       if (!options.silent) {
-        this.updateScreenshotProgress(targets.length, targets.length, null, `完成：并发 ${concurrency}，CDP ${this.posterStats.cdp || 0}，窗口 ${this.posterStats.window || 0}，降级 ${this.posterStats.fallback || 0}，失败 ${this.posterStats.failed}`);
+        this.updateScreenshotProgress(targets.length, targets.length, null, `完成：并发 ${concurrency}，CDP ${this.posterStats.cdp || 0}，窗口 ${this.posterStats.window || 0}，降级标记 ${this.posterStats.fallback || 0}，失败 ${this.posterStats.failed}`);
         this.hidePosterProgressHud(1800);
-        this.showToast(`真实海报 ${this.posterStats.screenshot} 个，封面降级 ${this.posterStats.fallback} 个`);
+        this.showToast(`真实海报 ${this.posterStats.screenshot} 个，降级并标记 ${this.posterStats.fallback} 个`);
       } else {
         this.hidePosterProgressHud(900);
       }
@@ -1592,7 +1601,7 @@ const App = {
   },
 
   describeCaptureStep(strategy) {
-    if (strategy === 'debugger-cdp') return '正在用增强 CDP 模式渲染并截图';
+    if (strategy === 'debugger-cdp') return '正在后台用增强 CDP 模式渲染并截图';
     if (strategy === 'quiet-window') return '正在用临时截图窗口加载网页';
     return '正在当前窗口创建截图标签页';
   },
@@ -1604,13 +1613,16 @@ const App = {
   },
 
   async captureBookmarkWithStrategy(bookmark, strategy, getTemp, createTemp) {
-    const useCdpFirst = strategy === 'debugger-cdp';
-    if (useCdpFirst && this.canUseDebuggerScreenshot()) {
+    if (strategy === 'debugger-cdp') {
+      if (!this.canUseDebuggerScreenshot()) {
+        throw new Error('当前浏览器不支持 Debugger/CDP 截图，已改用降级封面');
+      }
       try {
         const dataUrl = await this.captureBookmarkByDebugger(bookmark.url);
         return { dataUrl, engine: 'cdp', source: 'screenshot' };
       } catch (err) {
-        console.warn('CDP screenshot failed, fallback to window capture', bookmark.url, err);
+        console.warn('CDP screenshot failed, using marked poster fallback', bookmark.url, err);
+        throw err;
       }
     }
     if (strategy === 'active-tabs') {
@@ -1822,7 +1834,7 @@ const App = {
     const fail = $('#shotFail');
     if (workers) workers.textContent = `并发 ${this.posterStats.workers || clampConcurrency(this.settings.thumbnails?.concurrent || 4)}`;
     if (ok) ok.textContent = `真实截图 ${this.posterStats.screenshot || 0}`;
-    if (fallback) fallback.textContent = `封面降级 ${this.posterStats.fallback || 0}`;
+    if (fallback) fallback.textContent = `降级标记 ${this.posterStats.fallback || 0}`;
     if (fail) fail.textContent = `失败 ${this.posterStats.failed || 0}`;
     this.updatePosterProgressHud({
       show: true,
@@ -2127,8 +2139,8 @@ const App = {
     this.openModal('#aiModal');
     $('#aiModal .modal-head h2').textContent = '生成真实网页截图';
     $('#aiModalBody').innerHTML = `<section class="send-box"><p>将为 <strong>${batch.length}</strong> 个书签生成真实网页截图海报。</p>
-      <p>插件会优先使用增强 CDP 模式批量生成真实网页首屏截图，失败时自动切换临时窗口截图，并将结果压缩保存到本地缓存。</p>
-      <ul><li>优先保存真实网页画面</li><li>无法截图时自动降级为网页公开封面图或 favicon</li><li>截图缓存只保存在本机</li><li>可随时在设置里清除缓存</li></ul>
+      <p>插件会优先使用增强 CDP 模式批量生成真实网页首屏截图，失败时降级为网页封面或本地海报，并在卡片标记“截图失败”。</p>
+      <ul><li>优先保存真实网页画面</li><li>无法截图时自动降级为网页公开封面图或本地海报，并在卡片标记失败</li><li>截图缓存只保存在本机</li><li>可随时在设置里清除缓存</li></ul>
       <div class="modal-actions"><button class="ghost" id="cancelThumbBtn">取消</button><button class="primary" id="confirmThumbBtn">开始截图</button></div></section>`;
     $('#cancelThumbBtn').addEventListener('click', () => this.closeModal('#aiModal'));
     $('#confirmThumbBtn').addEventListener('click', () => {
@@ -2838,7 +2850,7 @@ const App = {
 
   renderSettingsSummaries() {
     const strategy = $('#screenshotStrategy')?.value || this.settings.thumbnails?.screenshotStrategy || 'debugger-cdp';
-    const strategyLabel = strategy === 'debugger-cdp' ? '增强 CDP' : strategy === 'quiet-window' ? '临时窗口' : '当前标签页';
+    const strategyLabel = strategy === 'debugger-cdp' ? 'CDP 后台' : strategy === 'quiet-window' ? '临时窗口' : '当前标签页';
     const viewport = ($('#captureSize')?.value || `${this.settings.thumbnails?.captureWidth || 1440}x${this.settings.thumbnails?.captureHeight || 900}`).replace('x', ' × ');
     const concurrent = clampConcurrency($('#posterConcurrentNumber')?.value || $('#posterConcurrent')?.value || this.settings.thumbnails?.concurrent || 4);
     const effectiveConcurrent = strategy === 'active-tabs' ? '1（前台）' : String(concurrent);
@@ -3415,6 +3427,7 @@ function iconSvg(name, extraClass = '') {
     image: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 3 3 2-2 4 4"/>',
     window: '<rect x="4" y="5" width="16" height="14" rx="2.4"/><path d="M4 9h16"/><path d="M8 7h.01M11 7h.01M14 7h.01"/>',
     globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.2 2.4 3.2 5.2 3.2 8.5s-1 6.1-3.2 8.5c-2.2-2.4-3.2-5.2-3.2-8.5S9.8 5.9 12 3.5z"/>',
+    warning: '<path d="M12 4l9 16H3L12 4z"/><path d="M12 9v5"/><path d="M12 17h.01"/>',
     crop: '<path d="M6 3v12a3 3 0 0 0 3 3h12"/><path d="M3 6h12a3 3 0 0 1 3 3v12"/><path d="M9 9h6v6H9z"/>',
     document: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h6"/>',
     download: '<path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/>',

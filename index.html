@@ -149,7 +149,7 @@
             <span class="settings-kicker">海报生成</span>
             <div>
               <h3>选择一个预设即可开始</h3>
-              <p>默认推荐“均衡模式”：稳定、速度适中，适合大多数书签墙。</p>
+              <p>默认推荐“均衡模式”：后台生成、失败标记、尽量不打断当前浏览。</p>
             </div>
             <label class="bp-master-switch">
               <span>自动补齐当前海报墙缺失截图</span>
@@ -172,7 +172,7 @@
                   <div><strong>常用预设</strong><small>先选预设，再按需微调下方参数</small></div>
                 </div>
                 <div class="poster-preset-row">
-                  <button type="button" class="poster-preset" data-strategy="quiet-window" data-concurrent="2" data-size="1365x768" data-delay="2600" data-crop="top"><b>省心模式</b><small>更慢但兼容性更好，适合电脑较忙时</small></button>
+                  <button type="button" class="poster-preset" data-strategy="quiet-window" data-concurrent="2" data-size="1365x768" data-delay="2600" data-crop="top"><b>兼容补拍</b><small>会打开临时窗口，适合少量复杂页面</small></button>
                   <button type="button" class="poster-preset recommended" data-strategy="debugger-cdp" data-concurrent="4" data-size="1440x900" data-delay="1800" data-crop="smart"><b>均衡模式</b><small>推荐，速度与成功率比较稳</small></button>
                   <button type="button" class="poster-preset" data-strategy="debugger-cdp" data-concurrent="8" data-size="1920x1080" data-delay="1800" data-crop="smart"><b>高清模式</b><small>更清晰，也会占用更多 CPU 和内存</small></button>
                 </div>
@@ -192,13 +192,13 @@
                   <button type="button" class="engine-card bp-choice-card" data-value="debugger-cdp">
                     <span class="bp-radio-dot"></span>
                     <span class="bp-choice-icon bp-blue-icon" data-icon="image"></span>
-                    <span class="bp-choice-copy"><strong>增强 CDP 截图</strong><small>首选方式，页面还原更完整</small></span>
+                    <span class="bp-choice-copy"><strong>增强 CDP 截图</strong><small>默认后台生成，失败会降级并标记</small></span>
                     <em>推荐</em>
                   </button>
                   <button type="button" class="engine-card bp-choice-card" data-value="quiet-window">
                     <span class="bp-radio-dot"></span>
                     <span class="bp-choice-icon bp-purple-icon" data-icon="window"></span>
-                    <span class="bp-choice-copy"><strong>临时窗口截图</strong><small>兼容性更好，适合复杂页面</small></span>
+                    <span class="bp-choice-copy"><strong>临时窗口截图</strong><small>会打开独立窗口，仅主动补拍时使用</small></span>
                   </button>
                   <button type="button" class="engine-card bp-choice-card" data-value="active-tabs">
                     <span class="bp-radio-dot"></span>
@@ -280,7 +280,7 @@
                         </div>
                         <div class="toggle-group bp-toggle-grid">
                           <label class="toggle-pill"><input type="checkbox" data-target="whitePageEnhance"><span><b>白底增强</b><small>浅色页面更清楚</small></span></label>
-                          <label class="toggle-pill"><input type="checkbox" data-target="fallbackToOg"><span><b>失败后自动降级</b><small>用网页封面或本地海报兜底</small></span></label>
+                          <label class="toggle-pill"><input type="checkbox" data-target="fallbackToOg"><span><b>失败后自动降级</b><small>用封面兜底，并在卡片标记失败</small></span></label>
                           <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>缓存原图</b><small>保留结果以便快速加载</small></span></label>
                           <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>压缩保存</b><small>减小缓存体积</small></span></label>
                         </div>

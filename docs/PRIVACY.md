@@ -12,7 +12,8 @@
 
 - `bookmarks`：读取、移动、重命名和删除浏览器原生书签。
 - `storage` / `unlimitedStorage`：保存设置、海报缓存、AI 建议。
-- `tabs`：打开截图标签页、临时窗口、恢复原标签页。
+- `tabs`：打开截图标签页、手动兼容补拍窗口、恢复原标签页、打开或切回扩展主页面。
+- `tabGroups`：把批量截图临时标签页收进折叠的“BookmarkWall 截图工作区”，减少标签栏干扰。
 - `activeTab`：手动当前页截图备用。
 - `scripting`：截图前滚动网页到顶部，避免截到中间位置。
 - `debugger`：使用 Chrome DevTools Protocol 生成真实网页截图。
