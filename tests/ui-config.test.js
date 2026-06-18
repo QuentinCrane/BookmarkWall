@@ -32,7 +32,9 @@ ok(app.includes('fallbackPosterTheme'), 'fallback poster uses deterministic desi
 ok(app.includes("poster-local-design-v7"), 'app bumps thumbnail schema to purge old strip caches and old fallback cards');
 ok(!app.includes("source: 'favicon'"), 'fallback poster never stores favicon-only posters as final covers');
 ok(app.includes('using marked poster fallback') && !app.includes('fallback to window capture'), 'default CDP failures use marked poster fallback instead of opening windows');
-ok(app.includes('screenshotFailedAt') && app.includes('shot-failure-badge'), 'poster cards preserve and render screenshot failure state');
+ok(app.includes('thumbnailFailureState') && app.includes('screenshotFailedAt') && app.includes('shot-failure-badge'), 'poster cards preserve and render screenshot failure state through one helper');
+ok(app.includes('thumbnailSourceLabel') && app.includes('thumbnailImageSrc'), 'poster card thumbnail labels and image sources are centralized');
+ok(app.includes('posterLimitForBatch'), 'poster generation limit calculation is centralized');
 console.log('UI config tests passed.');
 const css = fs.readFileSync('src/styles.css', 'utf8');
 ok(css.includes('--shot-h:160px') && css.includes('--body-h:46px'), 'CSS includes strict poster card geometry lock');

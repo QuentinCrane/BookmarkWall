@@ -4,23 +4,35 @@ function runtimePageUrl() {
   return chrome.runtime.getURL(APP_PAGE);
 }
 
+function resolveChromeResult(resolve, value, fallback = null) {
+  const err = chrome.runtime?.lastError;
+  if (err) console.warn(err.message);
+  resolve(err ? fallback : value);
+}
+
 function queryTabs(queryInfo) {
   return new Promise((resolve) => {
-    chrome.tabs.query(queryInfo, (tabs) => resolve(tabs || []));
+    chrome.tabs.query(queryInfo, (tabs) => resolveChromeResult(resolve, tabs || [], []));
   });
 }
 
 function updateTab(tabId, updateProperties) {
   return new Promise((resolve) => {
     if (tabId == null) { resolve(null); return; }
-    chrome.tabs.update(tabId, updateProperties, (tab) => resolve(tab || null));
+    chrome.tabs.update(tabId, updateProperties, (tab) => resolveChromeResult(resolve, tab || null));
   });
 }
 
 function focusWindow(windowId) {
   return new Promise((resolve) => {
     if (windowId == null || !chrome.windows?.update) { resolve(null); return; }
-    chrome.windows.update(windowId, { focused: true }, (win) => resolve(win || null));
+    chrome.windows.update(windowId, { focused: true }, (win) => resolveChromeResult(resolve, win || null));
+  });
+}
+
+function createAppTab(url) {
+  return new Promise((resolve) => {
+    chrome.tabs.create({ url }, (tab) => resolveChromeResult(resolve, tab || null));
   });
 }
 
@@ -33,5 +45,5 @@ chrome.action.onClicked.addListener(async () => {
     await updateTab(existing.id, { active: true });
     return;
   }
-  chrome.tabs.create({ url });
+  await createAppTab(url);
 });

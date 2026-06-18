@@ -1258,6 +1258,35 @@ const App = {
     return v;
   },
 
+  thumbnailImageSrc(thumb) {
+    if (this.settings.thumbnails?.useReal === false) return '';
+    return thumb?.dataUrl || thumb?.imageUrl || '';
+  },
+
+  thumbnailSourceLabel(thumb) {
+    switch (thumb?.source) {
+      case 'screenshot': return this.t('realShot');
+      case 'bundled-real-preview': return this.t('realSample');
+      case 'og-image': return this.t('ogCover');
+      case 'fallback-card': return this.t('posterCover');
+      case 'favicon': return this.t('siteIcon');
+      default: return '';
+    }
+  },
+
+  thumbnailFailureState(thumb) {
+    const failed = Boolean(thumb?.status === 'failed' || thumb?.screenshotFailedAt);
+    const hardFailed = thumb?.status === 'failed';
+    const label = hardFailed ? this.t('posterFailed') : this.t('screenshotFailed');
+    const text = thumb?.failedReason || thumb?.screenshotError || (hardFailed ? '海报生成失败' : '真实截图失败，已使用降级封面');
+    return {
+      failed,
+      label,
+      text,
+      badge: failed ? `<span class="shot-failure-badge" title="${escapeAttr(text)}">${escapeHtml(label)}</span>` : ''
+    };
+  },
+
   renderCard(bookmark, index = 0) {
     const selected = this.selectedIds.has(String(bookmark.id));
     const rec = this.aiRecommendations[bookmark.id];
@@ -1265,24 +1294,16 @@ const App = {
     const domain = bookmark.domain || BookmarkUtils.getDomain(bookmark.url);
     const date = bookmark.dateAdded ? new Date(bookmark.dateAdded).toISOString().slice(0, 10) : '';
     const thumb = this.getThumbnailForBookmark(bookmark);
-    const imageSrc = this.settings.thumbnails?.useReal !== false ? (thumb?.dataUrl || thumb?.imageUrl || '') : '';
+    const imageSrc = this.thumbnailImageSrc(thumb);
     const hasPosterImage = Boolean(imageSrc && thumb?.status !== 'failed');
-    const shotFailed = Boolean(thumb?.status === 'failed' || thumb?.screenshotFailedAt);
-    const failedHard = thumb?.status === 'failed';
-    const failureLabel = failedHard ? this.t('posterFailed') : this.t('screenshotFailed');
-    const failureText = thumb?.failedReason || thumb?.screenshotError || (failedHard ? '海报生成失败' : '真实截图失败，已使用降级封面');
-    const failureBadge = shotFailed ? `<span class="shot-failure-badge" title="${escapeAttr(failureText)}">${escapeHtml(failureLabel)}</span>` : '';
-    const thumbLabel = thumb?.source === 'screenshot' ? this.t('realShot')
-      : (thumb?.source === 'bundled-real-preview' ? this.t('realSample')
-      : (thumb?.source === 'og-image' ? this.t('ogCover')
-        : (thumb?.source === 'fallback-card' ? this.t('posterCover')
-          : (thumb?.source === 'favicon' ? this.t('siteIcon') : ''))));
+    const failure = this.thumbnailFailureState(thumb);
+    const thumbLabel = this.thumbnailSourceLabel(thumb);
     const poster = hasPosterImage
-      ? `<div class="poster-shot has-real source-${escapeHtml(thumb.source || 'poster')}">${failureBadge}<img class="poster-img" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(bookmark.title || '')}" loading="lazy"><div class="poster-glass"><span>${escapeHtml(thumbLabel || domain)}</span></div></div>`
-      : this.renderLocalCover(bookmark, domain, failureBadge);
+      ? `<div class="poster-shot has-real source-${escapeHtml(thumb.source || 'poster')}">${failure.badge}<img class="poster-img" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(bookmark.title || '')}" loading="lazy"><div class="poster-glass"><span>${escapeHtml(thumbLabel || domain)}</span></div></div>`
+      : this.renderLocalCover(bookmark, domain, failure.badge);
     const localIcon = localBookmarkIconDataUri(domain || bookmark.title || 'bookmark');
     const realIcon = siteFaviconUrl(bookmark.url) || localIcon;
-    return `<article class="poster-card ${selected ? 'selected' : ''} ${shotFailed ? 'shot-failed' : ''}" draggable="true" data-id="${escapeHtml(bookmark.id)}" style="--stagger:${Math.min(index, 18)}">
+    return `<article class="poster-card ${selected ? 'selected' : ''} ${failure.failed ? 'shot-failed' : ''}" draggable="true" data-id="${escapeHtml(bookmark.id)}" style="--stagger:${Math.min(index, 18)}">
       ${poster}
       <div class="card-body">
         <div class="card-head">
@@ -1292,7 +1313,7 @@ const App = {
         </div>
         <div class="domain-line">${escapeHtml(domain)}</div>
         <div class="tag-row">
-          ${shotFailed ? `<span class="failure-tag" title="${escapeAttr(failureText)}">${iconSvg('warning', 'tag-icon')} ${escapeHtml(failureLabel)}</span>` : ''}
+          ${failure.failed ? `<span class="failure-tag" title="${escapeAttr(failure.text)}">${iconSvg('warning', 'tag-icon')} ${escapeHtml(failure.label)}</span>` : ''}
           ${rec && this.settings.ai.enabled ? `<span class="ai-tag" title="${escapeHtml(rec.reason || '')}">✦ ${escapeHtml(shorten(rec.suggestedFolder || 'AI 建议', 20))}</span>` : ''}
           ${this.settings.showFolderTag ? `<span class="folder-tag" title="${escapeAttr(folder)}">${iconSvg('folder', 'tag-icon')} ${escapeHtml(folder)}</span>` : ''}
           ${hasPosterImage ? `<span class="thumb-tag">${escapeHtml(thumbLabel || '海报')}</span>` : ''}
@@ -1392,19 +1413,20 @@ const App = {
     return true;
   },
 
+  posterLimitForBatch(configured, fallback, count) {
+    const requested = Number(configured || fallback);
+    return Math.max(Number.isFinite(requested) ? requested : fallback, count || 0);
+  },
+
   async kickoffAutoPosters(reason = 'manual') {
     // Guard every automatic entry point with explicit user consent.
     if (!this.hasPosterGenerationConsent()) return;
     if (this.posterQueueRunning || this.autoPosterStarted && reason === 'initial') return;
-    if (!this.hasPosterGenerationConsent()) return;
     this.autoPosterStarted = true;
     if (this.settings.thumbnails?.autoGenerate === false) return;
     const list = this.getVisibleBookmarks().filter((b) => this.needsPosterGeneration(b));
     if (!list.length) return;
-    // Always process all candidates; do not cap below the number of items.  Use
-    // the configured backgroundLimit if it is higher than the candidate count.
-    const configured = Number(this.settings.thumbnails?.backgroundLimit || POSTER_SESSION_LIMIT);
-    const limit = Math.max(configured, list.length);
+    const limit = this.posterLimitForBatch(this.settings.thumbnails?.backgroundLimit, POSTER_SESSION_LIMIT, list.length);
     await this.generatePosters(list.slice(0, limit), { silent: true, reason });
   },
 
@@ -1414,12 +1436,9 @@ const App = {
       this.showToast('请先阅读引导并点击“开始生成真实海报”，确认后才会并发截图');
       return;
     }
-    const configured = Number(this.settings.thumbnails?.visibleLimit || POSTER_VISIBLE_LIMIT);
     const list = this.getVisibleBookmarks().filter((b) => b.url && (force || this.needsPosterGeneration(b)));
     if (!list.length) { this.showToast('当前海报墙已经有真实截图或无需重新生成'); return; }
-    // For manual generation we want to process all selected bookmarks; only fall back to the
-    // configured limit if it is larger than the candidate count.
-    const limit = Math.max(configured, list.length);
+    const limit = this.posterLimitForBatch(this.settings.thumbnails?.visibleLimit, POSTER_VISIBLE_LIMIT, list.length);
     await this.generatePosters(list.slice(0, limit), { silent: false, reason: 'manual-visible', forceScreenshot: true });
   },
 

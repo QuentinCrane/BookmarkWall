@@ -13,4 +13,5 @@ assert(fs.existsSync(manifest.icons['16']), 'ships 16px extension icon');
 assert(fs.existsSync(manifest.icons['32']), 'ships 32px extension icon');
 assert(fs.existsSync(manifest.icons['128']), 'ships 128px extension icon');
 assert(background.includes('chrome.tabs.query') && background.includes('chrome.tabs.update'), 'extension action reuses an existing BookmarkWall tab when possible');
+assert(background.includes('resolveChromeResult') && background.includes('createAppTab'), 'background action handles Chrome callback errors consistently');
 assert(manifest.version === '0.7.10', 'manifest version is 0.7.10');
