@@ -208,108 +208,102 @@
                 </div>
               </section>
 
-              <section class="bp-setting-card bp-perf-section">
-                <div class="bp-section-title">
-                  <span>速度与画质</span>
-                  <small>并发越高越快，但电脑负载也更高</small>
-                </div>
-                <div class="bp-perf-grid">
-                  <div class="bp-concurrency-box">
-                    <div class="bp-row-label"><span>同时生成数量</span><b>当前：<i id="posterConcurrentValue">4</i></b></div>
-                    <div class="bp-range-line"><span>1</span><input id="posterConcurrent" type="range" min="1" max="63" value="4" list="concurrencyMarks"><span>63</span></div>
-                    <label class="bp-number-inline">精确数值 <input id="posterConcurrentNumber" type="number" min="1" max="63" value="4" inputmode="numeric"></label>
-                    <datalist id="concurrencyMarks"><option value="1"></option><option value="2"></option><option value="4"></option><option value="8"></option><option value="16"></option><option value="32"></option><option value="63"></option></datalist>
-                    <div class="concurrency-marks bp-mark-row">
-                      <button type="button" class="concurrency-mark" data-value="1">1</button>
-                      <button type="button" class="concurrency-mark" data-value="2">2</button>
-                      <button type="button" class="concurrency-mark" data-value="4">4</button>
-                      <button type="button" class="concurrency-mark" data-value="8">8</button>
-                      <button type="button" class="concurrency-mark" data-value="16">16</button>
-                      <button type="button" class="concurrency-mark" data-value="32">32</button>
-                      <button type="button" class="concurrency-mark" data-value="63">63</button>
-                    </div>
-                    <p class="bp-help"><span data-icon="info"></span>一般电脑建议 4；截图时卡顿就降到 2。</p>
+              <details class="settings-details official-advanced bp-advanced-settings">
+                <summary><span>高级参数</span><small>截图尺寸、等待时间、裁剪、备份和缓存管理</small></summary>
+                <div class="official-advanced-body">
+                  <div class="settings-status-strip shot-status-strip">
+                    <span><small>截图引擎</small><b id="shotSummaryEngine">增强 CDP</b></span>
+                    <span><small>实际并发</small><b id="shotSummaryConcurrent">4</b></span>
+                    <span><small>视口尺寸</small><b id="shotSummaryViewport">1440 × 900</b></span>
+                    <span><small>安全状态</small><b id="shotSummaryBackup">备份提醒开启</b></span>
                   </div>
-                  <div class="bp-select-stack">
-                    <label>截图尺寸
-                      <select id="captureSize">
-                        <option value="1365x768">省资源 · 1365 × 768</option>
-                        <option value="1440x900">均衡 · 1440 × 900</option>
-                        <option value="1920x1080">高清 · 1920 × 1080</option>
-                      </select>
-                    </label>
-                    <label>页面等待时间
-                      <select id="captureDelay">
-                        <option value="1200">较快 · 1.2 秒</option>
-                        <option value="1800">均衡 · 1.8 秒</option>
-                        <option value="2600">稳妥 · 2.6 秒</option>
-                        <option value="4000">慢速网页 · 4 秒</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              </section>
 
-              <section class="bp-setting-card bp-posterize-section">
-                <div class="bp-section-title">
-                  <span>裁剪与失败处理</span>
-                  <small>控制截图如何变成卡片海报</small>
-                </div>
-                <div class="bp-posterize-grid">
-                  <div>
-                    <div class="bp-mini-label">裁剪模式</div>
-                    <select id="cropMode" hidden>
-                      <option value="smart">智能裁剪 + 去白边</option>
-                      <option value="top">首屏顶部裁剪</option>
-                      <option value="center">居中裁剪</option>
-                    </select>
-                    <div class="crop-group bp-crop-grid">
-                      <button type="button" class="crop-card bp-crop-card" data-value="smart"><span data-icon="crop"></span><strong>智能裁剪</strong><small>推荐，自动避开空白</small></button>
-                      <button type="button" class="crop-card bp-crop-card" data-value="top"><span data-icon="document"></span><strong>首屏裁剪</strong><small>保留网页顶部信息</small></button>
-                      <button type="button" class="crop-card bp-crop-card" data-value="center"><span data-icon="image"></span><strong>居中裁剪</strong><small>适合视觉类页面</small></button>
+                  <section class="bp-setting-card bp-perf-section">
+                    <div class="bp-section-title">
+                      <span>速度与画质</span>
+                      <small>并发越高越快，但电脑负载也更高</small>
                     </div>
-                    <div class="toggle-group bp-toggle-grid">
-                      <label class="toggle-pill"><input type="checkbox" data-target="whitePageEnhance"><span><b>白底增强</b><small>浅色页面更清楚</small></span></label>
-                      <label class="toggle-pill"><input type="checkbox" data-target="fallbackToOg"><span><b>失败后自动降级</b><small>用网页封面或本地海报兜底</small></span></label>
-                      <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>缓存原图</b><small>保留结果以便快速加载</small></span></label>
-                      <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>压缩保存</b><small>减小缓存体积</small></span></label>
+                    <div class="bp-perf-grid">
+                      <div class="bp-concurrency-box">
+                        <div class="bp-row-label"><span>同时生成数量</span><b>当前：<i id="posterConcurrentValue">4</i></b></div>
+                        <div class="bp-range-line"><span>1</span><input id="posterConcurrent" type="range" min="1" max="63" value="4" list="concurrencyMarks"><span>63</span></div>
+                        <label class="bp-number-inline">精确数值 <input id="posterConcurrentNumber" type="number" min="1" max="63" value="4" inputmode="numeric"></label>
+                        <datalist id="concurrencyMarks"><option value="1"></option><option value="2"></option><option value="4"></option><option value="8"></option><option value="16"></option><option value="32"></option><option value="63"></option></datalist>
+                        <div class="concurrency-marks bp-mark-row">
+                          <button type="button" class="concurrency-mark" data-value="1">1</button>
+                          <button type="button" class="concurrency-mark" data-value="2">2</button>
+                          <button type="button" class="concurrency-mark" data-value="4">4</button>
+                          <button type="button" class="concurrency-mark" data-value="8">8</button>
+                          <button type="button" class="concurrency-mark" data-value="16">16</button>
+                          <button type="button" class="concurrency-mark" data-value="32">32</button>
+                          <button type="button" class="concurrency-mark" data-value="63">63</button>
+                        </div>
+                        <p class="bp-help"><span data-icon="info"></span>一般电脑建议 4；截图时卡顿就降到 2。</p>
+                      </div>
+                      <div class="bp-select-stack">
+                        <label>截图尺寸
+                          <select id="captureSize">
+                            <option value="1365x768">省资源 · 1365 × 768</option>
+                            <option value="1440x900">均衡 · 1440 × 900</option>
+                            <option value="1920x1080">高清 · 1920 × 1080</option>
+                          </select>
+                        </label>
+                        <label>页面等待时间
+                          <select id="captureDelay">
+                            <option value="1200">较快 · 1.2 秒</option>
+                            <option value="1800">均衡 · 1.8 秒</option>
+                            <option value="2600">稳妥 · 2.6 秒</option>
+                            <option value="4000">慢速网页 · 4 秒</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
-                  </div>
+                  </section>
+
+                  <section class="bp-setting-card bp-posterize-section">
+                    <div class="bp-section-title">
+                      <span>裁剪与失败处理</span>
+                      <small>控制截图如何变成卡片海报</small>
+                    </div>
+                    <div class="bp-posterize-grid">
+                      <div>
+                        <div class="bp-mini-label">裁剪模式</div>
+                        <select id="cropMode" hidden>
+                          <option value="smart">智能裁剪 + 去白边</option>
+                          <option value="top">首屏顶部裁剪</option>
+                          <option value="center">居中裁剪</option>
+                        </select>
+                        <div class="crop-group bp-crop-grid">
+                          <button type="button" class="crop-card bp-crop-card" data-value="smart"><span data-icon="crop"></span><strong>智能裁剪</strong><small>推荐，自动避开空白</small></button>
+                          <button type="button" class="crop-card bp-crop-card" data-value="top"><span data-icon="document"></span><strong>首屏裁剪</strong><small>保留网页顶部信息</small></button>
+                          <button type="button" class="crop-card bp-crop-card" data-value="center"><span data-icon="image"></span><strong>居中裁剪</strong><small>适合视觉类页面</small></button>
+                        </div>
+                        <div class="toggle-group bp-toggle-grid">
+                          <label class="toggle-pill"><input type="checkbox" data-target="whitePageEnhance"><span><b>白底增强</b><small>浅色页面更清楚</small></span></label>
+                          <label class="toggle-pill"><input type="checkbox" data-target="fallbackToOg"><span><b>失败后自动降级</b><small>用网页封面或本地海报兜底</small></span></label>
+                          <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>缓存原图</b><small>保留结果以便快速加载</small></span></label>
+                          <label class="toggle-pill"><input type="checkbox" checked disabled><span><b>压缩保存</b><small>减小缓存体积</small></span></label>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="bp-setting-card bp-backup-section">
+                    <div>
+                      <div class="bp-section-title compact"><span>开始前的安全网</span><small>批量整理前保留一份完整书签备份</small></div>
+                      <div class="bp-backup-actions">
+                        <button type="button" class="ghost bp-export-html" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 导出 HTML</button>
+                        <button type="button" class="ghost bp-export-json" data-proxy="exportBookmarksJsonBtn"><span data-icon="download"></span> 导出 JSON</button>
+                      </div>
+                    </div>
+                    <div class="bp-backup-state"><span data-icon="shield"></span>最近备份：<b id="thumbnailBackupText">尚未导出</b></div>
+                    <label class="bp-risk-check"><input id="requireBackupBeforeOrganize" type="checkbox" checked> 高风险整理前提醒我先备份<small>删除 / 批量移动前提醒备份</small></label>
+                  </section>
+
+                  <div class="actions-row bp-shot-actions"><button id="generateVisiblePostersBtn" class="primary">立即生成当前海报墙</button><button id="generateVisibleThumbsBtn" class="ghost">先确认再生成</button><button id="clearThumbsBtn" class="ghost danger">清除海报缓存</button></div>
                 </div>
-              </section>
+              </details>
             </div>
-
-            <aside class="bp-shot-side">
-              <div class="settings-status-strip shot-status-strip">
-                <span><small>截图引擎</small><b id="shotSummaryEngine">增强 CDP</b></span>
-                <span><small>实际并发</small><b id="shotSummaryConcurrent">4</b></span>
-                <span><small>视口尺寸</small><b id="shotSummaryViewport">1440 × 900</b></span>
-                <span><small>安全状态</small><b id="shotSummaryBackup">备份提醒开启</b></span>
-              </div>
-
-              <div class="bp-preview-area">
-                <div class="bp-mini-label">效果预览</div>
-                <div class="bp-preview-flow">
-                  <figure><img src="assets/onboarding/mdn.png" alt="原始网页预览"><figcaption>原始页面</figcaption></figure>
-                  <span class="bp-preview-arrow">→</span>
-                  <figure><img src="assets/onboarding/mdn.png" alt="海报化效果预览"><figcaption>海报化效果</figcaption></figure>
-                </div>
-              </div>
-
-              <section class="bp-setting-card bp-backup-section">
-                <div>
-                  <div class="bp-section-title compact"><span>开始前的安全网</span><small>批量整理前保留一份完整书签备份</small></div>
-                  <div class="bp-backup-actions">
-                    <button type="button" class="ghost bp-export-html" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 导出 HTML</button>
-                    <button type="button" class="ghost bp-export-json" data-proxy="exportBookmarksJsonBtn"><span data-icon="download"></span> 导出 JSON</button>
-                  </div>
-                </div>
-                <div class="bp-backup-state"><span data-icon="shield"></span>最近备份：<b id="thumbnailBackupText">尚未导出</b></div>
-                <label class="bp-risk-check"><input id="requireBackupBeforeOrganize" type="checkbox" checked> 高风险整理前提醒我先备份<small>删除 / 批量移动前提醒备份</small></label>
-              </section>
-
-              <div class="actions-row bp-shot-actions"><button id="generateVisiblePostersBtn" class="primary">立即生成当前海报墙</button><button id="generateVisibleThumbsBtn" class="ghost">先确认再生成</button><button id="clearThumbsBtn" class="ghost danger">清除海报缓存</button></div>
-            </aside>
           </div>
         </div>
         <div class="settings-panel" data-panel="ai">
