@@ -11,7 +11,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-icon" data-icon="grid"></span>
+        <img class="brand-icon app-icon" src="assets/icon.png" alt="" />
         <div><strong>书签海报墙</strong><small>v0.7.10</small></div>
       </div>
       <div class="side-search"><span data-icon="search"></span><input id="sideSearchInput" placeholder="搜索书签或文件夹" /></div>
@@ -63,16 +63,35 @@
     <div class="modal-card settings-card">
       <aside class="settings-nav">
         <h2>设置</h2>
-        <button class="active" data-tab="basic"><span data-icon="gear"></span><span><b>基础</b><small>显示与入口</small></span></button>
-        <button data-tab="appearance"><span data-icon="eye"></span><span><b>外观</b><small>语言与卡片</small></span></button>
-        <button data-tab="thumbnail"><span data-icon="image"></span><span><b>海报</b><small>截图与缓存</small></span></button>
-        <button data-tab="ai"><span data-icon="sparkle"></span><span><b>AI</b><small>服务商与规则</small></span></button>
-        <button data-tab="data"><span data-icon="database"></span><span><b>数据</b><small>备份与导出</small></span></button>
-        <button data-tab="privacy"><span data-icon="shield"></span><span><b>隐私</b><small>权限边界</small></span></button>
-        <button data-tab="about"><span data-icon="info"></span><span><b>关于</b><small>版本与定位</small></span></button>
+        <div class="settings-nav-intro">
+          <strong>按流程整理，而不是一次看完全部</strong>
+          <p>先调整首页和海报，再决定要不要启用 AI，最后处理备份和权限。</p>
+        </div>
+        <div class="settings-nav-group">
+          <span class="settings-nav-label">开始整理</span>
+          <button class="active" data-tab="basic"><span data-icon="gear"></span><span><b>基础</b><small>首页显示与常用入口</small></span></button>
+          <button data-tab="thumbnail"><span data-icon="image"></span><span><b>海报</b><small>截图预设与生成方式</small></span></button>
+          <button data-tab="ai"><span data-icon="sparkle"></span><span><b>AI</b><small>预整理服务与应用规则</small></span></button>
+        </div>
+        <div class="settings-nav-group">
+          <span class="settings-nav-label">工作台</span>
+          <button data-tab="appearance"><span data-icon="eye"></span><span><b>外观</b><small>语言、卡片大小与比例</small></span></button>
+          <button data-tab="data"><span data-icon="database"></span><span><b>数据</b><small>备份、导出与插件数据</small></span></button>
+        </div>
+        <div class="settings-nav-group">
+          <span class="settings-nav-label">说明</span>
+          <button data-tab="privacy"><span data-icon="shield"></span><span><b>隐私</b><small>权限用途和边界说明</small></span></button>
+          <button data-tab="about"><span data-icon="info"></span><span><b>关于</b><small>版本定位与使用原则</small></span></button>
+        </div>
       </aside>
       <section class="settings-content">
         <div class="modal-head"><div><h2 id="settingsPanelTitle">设置</h2><p id="settingsPanelSubtitle">管理海报、备份、AI 和隐私选项</p></div><button id="closeSettings">×</button></div>
+        <div class="settings-flow-strip" aria-label="常用流程">
+          <button type="button" class="settings-flow-step active" data-jump-tab="basic"><small>1</small><b>先定首页</b><span>基础显示</span></button>
+          <button type="button" class="settings-flow-step" data-jump-tab="thumbnail"><small>2</small><b>再配海报</b><span>截图预设</span></button>
+          <button type="button" class="settings-flow-step" data-jump-tab="ai"><small>3</small><b>需要时接入 AI</b><span>服务商与规则</span></button>
+          <button type="button" class="settings-flow-step" data-jump-tab="data"><small>4</small><b>整理前留备份</b><span>导出与恢复</span></button>
+        </div>
         <div class="settings-dock">
           <div class="settings-dock-copy"><strong id="settingsDockTitle">基础设置</strong><span id="settingsDockHint">保存当前设置，继续整理书签墙</span></div>
           <div class="settings-dock-actions">
@@ -84,8 +103,8 @@
           <div class="settings-page-intro">
             <span class="settings-kicker">建议从这里开始</span>
             <div>
-              <h3>把首页调成你日常整理书签的样子</h3>
-              <p>基础设置只控制首页显示，不会移动、删除或访问任何网页。</p>
+              <h3>先把首页调成顺手的整理工作台</h3>
+              <p>这一页只处理入口和显示密度，不会改动书签，也不会访问网页。</p>
             </div>
             <div class="settings-intro-actions">
               <button type="button" class="ghost" data-proxy="exportBookmarksHtmlBtn"><span data-icon="download"></span> 先备份书签</button>
@@ -94,42 +113,52 @@
           </div>
           <div class="settings-overview-card">
             <div class="overview-copy">
-              <span class="overview-kicker">当前工作流</span>
-              <strong>先看清，再整理</strong>
-              <p>首页展示保持轻量；截图、AI 和批量整理都由你主动触发。</p>
+              <span class="overview-kicker">当前整理节奏</span>
+              <strong>先看清，再决定下一步</strong>
+              <p>基础页负责把首页收干净，海报、AI 和批量整理都放在后面按需开启。</p>
             </div>
             <div class="overview-stats">
-              <span><b>本地</b><small>书签读取</small></span>
-              <span><b>手动</b><small>截图 / AI</small></span>
-              <span><b>可撤销</b><small>整理操作</small></span>
+              <span><b>本地</b><small>读取书签</small></span>
+              <span><b>按需</b><small>海报 / AI</small></span>
+              <span><b>有回退</b><small>整理操作</small></span>
             </div>
           </div>
           <section class="settings-section">
             <div class="section-head">
-              <div><strong>首页显示</strong><small>这些开关会立即影响海报卡片的信息密度</small></div>
+              <div><strong>首页显示</strong><small>把最常影响判断的信息放在这里统一调</small></div>
               <span class="section-badge">推荐默认</span>
             </div>
             <label class="switch-line"><span><b>显示文件夹标签</b><small>在每张卡片底部显示所在文件夹，适合整理时判断归类</small></span><input id="showFolderTag" type="checkbox" checked></label>
             <label class="switch-line"><span><b>显示添加时间</b><small>需要按时间回看书签时开启；平时关闭会让卡片更干净</small></span><input id="showDate" type="checkbox"></label>
           </section>
+          <section class="settings-section settings-section-muted">
+            <div class="section-head">
+              <div><strong>整理顺序建议</strong><small>按这个顺序走，设置页会更不容易迷路</small></div>
+            </div>
+            <div class="settings-note-grid">
+              <article class="info-box setting-note-card"><strong>1. 先调首页</strong><p>先确定卡片信息量，再判断需不需要海报。</p></article>
+              <article class="info-box setting-note-card"><strong>2. 再定海报策略</strong><p>大部分情况选“均衡模式”就够用，高级参数只在特殊页面再改。</p></article>
+              <article class="info-box setting-note-card"><strong>3. 最后接入 AI</strong><p>等你确认分类习惯后，再让 AI 参与预整理会更稳。</p></article>
+            </div>
+          </section>
           <div class="settings-action-list">
-            <button type="button" data-jump-tab="appearance"><span data-icon="eye"></span><b>调整语言和卡片观感</b><small>外观页</small></button>
-            <button type="button" data-jump-tab="ai"><span data-icon="sparkle"></span><b>配置 AI 预整理</b><small>AI 页</small></button>
-            <button type="button" data-jump-tab="data"><span data-icon="database"></span><b>导出或管理数据</b><small>数据页</small></button>
+            <button type="button" data-jump-tab="appearance"><span data-icon="eye"></span><b>调整语言和卡片尺寸</b><small>外观页</small></button>
+            <button type="button" data-jump-tab="thumbnail"><span data-icon="image"></span><b>选择海报生成策略</b><small>海报页</small></button>
+            <button type="button" data-jump-tab="data"><span data-icon="database"></span><b>先导出一份完整备份</b><small>数据页</small></button>
           </div>
         </div>
         <div class="settings-panel" data-panel="appearance">
           <div class="settings-page-intro">
             <span class="settings-kicker">外观</span>
             <div>
-              <h3>少一点噪音，多一点可读性</h3>
-              <p>这里保留最影响阅读和判断的设置：语言、工具栏密度、海报标签显示。</p>
+              <h3>把阅读密度集中到一页，不用四处找</h3>
+              <p>这里专门放语言、卡片大小和海报比例，都是会立刻影响浏览节奏的项。</p>
             </div>
             <span class="style-pill">Light Glass</span>
           </div>
           <section class="settings-section appearance-layout">
             <div class="setting-hero-card">
-              <div><strong>视觉风格</strong><p>浅色面板、低对比边界和克制蓝色强调，适合长时间整理和浏览大量卡片。</p></div>
+              <div><strong>视觉风格</strong><p>浅色面板、克制强调色和清晰留白，目标是让大量书签仍然能快速扫读。</p></div>
               <span class="style-pill">当前方案</span>
             </div>
             <div class="subsection design-preview-section"><h4>海报卡片预览</h4>
@@ -138,34 +167,33 @@
             </div>
           </section>
           <section class="settings-section">
-            <div class="section-head"><div><strong>界面偏好</strong><small>降低频繁整理时的干扰</small></div></div>
-            <label class="switch-line"><span><b>紧凑工具栏</b><small>搜索、筛选和 AI 入口保持在顶部，窄屏时横向滚动</small></span><input type="checkbox" checked disabled></label>
-            <label class="switch-line"><span><b>轻量海报标签</b><small>截图状态和文件夹标签只在卡片信息区显示，不遮挡海报</small></span><input type="checkbox" checked disabled></label>
-            <label class="switch-line"><span><b>语言 / Language</b><small>切换主界面、设置页和 AI 操作入口语言</small></span><select id="settingsLanguageSelect"><option value="zh-CN">中文</option><option value="en">English</option></select></label>
+            <div class="section-head"><div><strong>阅读密度</strong><small>这三项决定首页看起来是更紧凑还是更舒展</small></div><span class="section-badge">即时生效</span></div>
+            <div class="config-grid appearance-config-grid">
+              <label>语言 / Language<select id="settingsLanguageSelect"><option value="zh-CN">中文</option><option value="en">English</option></select></label>
+              <label>卡片大小<select id="settingsCardSizeSelect"><option value="large">卡片大小：大</option><option value="medium">卡片大小：中</option><option value="small">卡片大小：小</option></select></label>
+              <label>海报比例<select id="settingsPosterAspectSelect"><option value="landscape">横向海报</option><option value="portrait">竖向海报</option></select></label>
+            </div>
+          </section>
+          <section class="settings-section settings-section-muted">
+            <div class="section-head"><div><strong>固定规则</strong><small>下面两点已经按默认最佳实践收好，不需要重复决策</small></div></div>
+            <div class="settings-note-grid">
+              <article class="info-box setting-note-card"><strong>工具栏保持轻量</strong><p>搜索、筛选和 AI 入口固定在顶部，窄屏时横向滚动，避免主内容区被挤乱。</p></article>
+              <article class="info-box setting-note-card"><strong>标签不遮挡海报</strong><p>截图状态、文件夹和来源标签只留在信息区，减少画面噪音。</p></article>
+            </div>
           </section>
         </div>
         <div class="settings-panel bp-settings-shot" data-panel="thumbnail">
           <div class="settings-page-intro bp-shot-header">
             <span class="settings-kicker">海报生成</span>
             <div>
-              <h3>选择一个预设即可开始</h3>
-              <p>默认推荐“均衡模式”：后台生成、失败标记、尽量不打断当前浏览。</p>
+              <h3>先选预设，再在需要时展开高级参数</h3>
+              <p>默认推荐“均衡模式”：后台生成、失败标记、尽量不打断当前浏览。大多数情况下到这里就够了。</p>
             </div>
             <label class="bp-master-switch">
               <span>自动补齐当前海报墙缺失截图</span>
               <input id="autoGeneratePosters" type="checkbox" checked>
             </label>
           </div>
-          <section class="settings-section failed-repair-card">
-            <div class="section-head">
-              <div><strong>截图失败修复</strong><small>只处理已标记失败的海报，不重跑已成功的截图</small></div>
-              <span id="failedPosterCount" class="section-badge">暂无失败</span>
-            </div>
-            <div class="failed-repair-row">
-              <div><b>兼容补拍失败项</b><small>临时使用窗口截图、低并发和更长等待，完成后恢复当前预设</small></div>
-              <button type="button" id="repairFailedPostersBtn" class="primary"><span data-icon="refresh"></span> 一键补拍失败海报</button>
-            </div>
-          </section>
           <input id="posterMode" type="hidden" value="screenshot-first">
           <input id="posterLimit" type="hidden" value="300">
           <input id="posterVisibleLimit" type="hidden" value="300">
@@ -313,6 +341,16 @@
                   <div class="actions-row bp-shot-actions"><button id="generateVisiblePostersBtn" class="primary">立即生成当前海报墙</button><button id="generateVisibleThumbsBtn" class="ghost">先确认再生成</button><button id="clearThumbsBtn" class="ghost danger">清除海报缓存</button></div>
                 </div>
               </details>
+              <section class="settings-section failed-repair-card settings-section-muted">
+                <div class="section-head">
+                  <div><strong>截图失败修复</strong><small>只有遇到失败项时才需要回来处理，不必一开始就看它</small></div>
+                  <span id="failedPosterCount" class="section-badge">暂无失败</span>
+                </div>
+                <div class="failed-repair-row">
+                  <div><b>兼容补拍失败项</b><small>临时使用窗口截图、低并发和更长等待，完成后恢复当前预设</small></div>
+                  <button type="button" id="repairFailedPostersBtn" class="primary"><span data-icon="refresh"></span> 一键补拍失败海报</button>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -424,7 +462,7 @@
   <div id="onboardingModal" class="modal onboarding-modal">
     <div class="modal-card onboarding-card onboarding-v076">
       <div class="onboarding-topline">
-        <div class="onboarding-brand"><span class="brand-icon" data-icon="bookmark"></span><strong>书签海报墙</strong></div>
+        <div class="onboarding-brand"><img class="brand-icon app-icon" src="assets/icon.png" alt="" /><strong>书签海报墙</strong></div>
         <button id="closeOnboardingX" class="onboarding-close">×</button>
       </div>
       <div class="onboarding-title-block">

@@ -8,6 +8,8 @@ const STORAGE_KEY = 'bookmarkPosterWall.settings.v1';
 const AI_KEY = 'bookmarkPosterWall.aiRecommendations.v1';
 const THUMBNAIL_KEY = 'bookmarkPosterWall.thumbnailCache.v1';
 const THUMBNAIL_SCHEMA_VERSION = 'poster-local-design-v7';
+const APP_HISTORY_MARKER = 'bookmark-wall-nav-v1';
+const SETTINGS_TABS = ['basic', 'appearance', 'thumbnail', 'ai', 'data', 'privacy', 'about'];
 // Increase default limits so large bookmark collections can be processed.  
 // The previous defaults (80 for a session and 160 visible) meant only a small
 // fraction of a user's bookmarks were posterized on each run. By raising
@@ -278,6 +280,8 @@ const App = {
   sortBy: 'recent',
   filter: 'all',
   activeSettingsTab: 'basic',
+  historyReady: false,
+  historySyncMuted: false,
   pendingViewTransition: false,
   undoStack: [],
   posterQueueRunning: false,
@@ -325,6 +329,7 @@ const App = {
     this.thumbnailCache = await StorageAdapter.get(THUMBNAIL_KEY, {});
     await this.migrateThumbnailCache();
     this.bindEvents();
+    this.initAppHistory();
     this.adapter.onChanged(async () => {
       if (!this.bookmarksLoaded) return;
       await this.loadBookmarks();
@@ -404,7 +409,7 @@ const App = {
     $('#currentSub').textContent = '阅读说明后再读取书签';
     $('#grid').className = `poster-grid ${this.settings.cardSize || 'large'} first-run-grid`;
     $('#grid').innerHTML = `<div class="first-run-state">
-      <div class="first-run-icon">${iconSvg('shield')}</div>
+      <img class="first-run-icon app-icon" src="assets/icon.png" alt="" />
       <h3>先确认，再读取书签</h3>
       <p>首次打开时插件不会扫描书签、生成截图或执行整理。请先阅读引导，了解会读取哪些信息、为什么需要截图，以及如何先导出完整备份。</p>
       <div class="first-run-actions">
@@ -453,14 +458,38 @@ const App = {
     $('#sizeSelect').addEventListener('change', (e) => { this.settings.cardSize = e.target.value; this.saveSettings(); this.renderMain(); });
     $('#posterAspectSelect')?.addEventListener('change', (e) => { this.settings.thumbnails = this.settings.thumbnails || {}; this.settings.thumbnails.posterAspect = e.target.value; this.saveSettings(); this.renderMain(); });
     $('#languageSelect')?.addEventListener('change', (e) => { this.settings.language = e.target.value; this.saveSettings(); this.applyLanguage(); this.render(); });
-    $('#settingsLanguageSelect')?.addEventListener('change', (e) => { this.settings.language = e.target.value; this.saveSettings(); this.applyLanguage(); this.render(); });
+    $('#settingsLanguageSelect')?.addEventListener('change', (e) => {
+      this.settings.language = e.target.value;
+      const toolbar = $('#languageSelect');
+      if (toolbar && toolbar.value !== e.target.value) toolbar.value = e.target.value;
+      this.saveSettings();
+      this.applyLanguage();
+      this.render();
+    });
+    $('#settingsCardSizeSelect')?.addEventListener('change', (e) => {
+      this.settings.cardSize = e.target.value;
+      const toolbar = $('#sizeSelect');
+      if (toolbar && toolbar.value !== e.target.value) toolbar.value = e.target.value;
+      this.saveSettings();
+      this.renderMain();
+      this.syncToolbarSelects();
+    });
+    $('#settingsPosterAspectSelect')?.addEventListener('change', (e) => {
+      this.settings.thumbnails = this.settings.thumbnails || {};
+      this.settings.thumbnails.posterAspect = e.target.value;
+      const toolbar = $('#posterAspectSelect');
+      if (toolbar && toolbar.value !== e.target.value) toolbar.value = e.target.value;
+      this.saveSettings();
+      this.renderMain();
+      this.syncToolbarSelects();
+    });
     $('#scopeAll').addEventListener('click', () => this.switchView('all'));
     $('#scopeCurrent').addEventListener('click', () => {
       if (this.currentFolderId === 'all') this.switchView(this.folders[0]?.id || 'all');
       else this.renderMain();
     });
     $('#settingsBtn').addEventListener('click', () => this.openSettings());
-    $('#closeSettings').addEventListener('click', () => this.closeModal('#settingsModal'));
+    $('#closeSettings').addEventListener('click', () => this.closeSettings());
     $('#closeMoveModal').addEventListener('click', () => this.closeModal('#moveModal'));
     $('#closeEditModal').addEventListener('click', () => this.closeModal('#editModal'));
     $('#closeAiModal').addEventListener('click', () => this.closeModal('#aiModal'));
@@ -488,11 +517,11 @@ const App = {
       const limit = Math.max(POSTER_VISIBLE_LIMIT, targets.length);
       this.generatePosters(targets.slice(0, limit), { silent: false });
     });
-    $('#generateVisiblePostersBtn')?.addEventListener('click', () => { this.closeModal('#settingsModal'); this.generatePostersForVisible(true); });
-    $('#generateVisibleThumbsBtn')?.addEventListener('click', () => { this.closeModal('#settingsModal'); this.openThumbnailConfirm('visible'); });
+    $('#generateVisiblePostersBtn')?.addEventListener('click', () => { this.closeSettings(); this.generatePostersForVisible(true); });
+    $('#generateVisibleThumbsBtn')?.addEventListener('click', () => { this.closeSettings(); this.openThumbnailConfirm('visible'); });
     $('#repairFailedPostersBtn')?.addEventListener('click', async () => {
       await this.collectAndSaveSettings({ silent: true });
-      this.closeModal('#settingsModal');
+      this.closeSettings();
       await this.repairFailedPosters('all');
     });
     $('#clearThumbsBtn')?.addEventListener('click', () => this.clearThumbnailCache());
@@ -500,7 +529,7 @@ const App = {
     $('#undoBtn').addEventListener('click', () => this.undo());
 
     $('#saveSettingsBtn').addEventListener('click', () => this.collectAndSaveSettings());
-    $('#saveAndRunAiBtn')?.addEventListener('click', async () => { await this.collectAndSaveSettings({ silent: true }); this.closeModal('#settingsModal'); this.openAiConfirm('visible'); });
+    $('#saveAndRunAiBtn')?.addEventListener('click', async () => { await this.collectAndSaveSettings({ silent: true }); this.closeSettings(); this.openAiConfirm('visible'); });
     $('#settingsDockPrimary')?.addEventListener('click', () => this.handleSettingsDockPrimary());
     $('#settingsDockSecondary')?.addEventListener('click', () => this.handleSettingsDockSecondary());
     $('#testAiBtn').addEventListener('click', () => this.testAiConnection());
@@ -625,6 +654,10 @@ const App = {
       const modal = $(selector);
       if (!modal || modal.dataset.backdropCloseBound === '1') return;
       modal.dataset.backdropCloseBound = '1';
+      const close = () => {
+        if (selector === '#settingsModal') this.closeSettings();
+        else this.closeModal(selector);
+      };
       modal.addEventListener('pointerdown', (event) => {
         if (event.target === modal) modal.dataset.backdropDown = '1';
         else delete modal.dataset.backdropDown;
@@ -632,10 +665,10 @@ const App = {
       modal.addEventListener('pointerup', (event) => {
         const startedOnBackdrop = modal.dataset.backdropDown === '1';
         delete modal.dataset.backdropDown;
-        if (startedOnBackdrop && event.target === modal) this.closeModal(selector);
+        if (startedOnBackdrop && event.target === modal) close();
       });
       modal.addEventListener('click', (event) => {
-        if (event.target === modal) this.closeModal(selector);
+        if (event.target === modal) close();
       });
     });
   },
@@ -721,6 +754,86 @@ const App = {
       const select = document.getElementById(id);
       if (select?._syncCustomSelect) select._syncCustomSelect();
     });
+  },
+
+  initAppHistory() {
+    if (this.historyReady || typeof history === 'undefined') return;
+    this.historyReady = true;
+    const initialState = this.normalizeAppHistoryState(history.state);
+    history.replaceState(initialState, '');
+    window.addEventListener('popstate', (event) => {
+      this.applyAppHistoryState(event.state);
+    });
+  },
+
+  isKnownSettingsTab(tab) {
+    return SETTINGS_TABS.includes(String(tab || ''));
+  },
+
+  currentManagedModal() {
+    if ($('#settingsModal')?.classList.contains('show')) return 'settings';
+    if ($('#onboardingModal')?.classList.contains('show')) return 'onboarding';
+    return null;
+  },
+
+  normalizeAppHistoryState(state) {
+    const view = String(state?.view || this.currentFolderId || 'all');
+    const modal = ['settings', 'onboarding'].includes(state?.modal) ? state.modal : null;
+    const settingsTab = this.isKnownSettingsTab(state?.settingsTab) ? state.settingsTab : (this.activeSettingsTab || 'basic');
+    return {
+      __bookmarkWall: APP_HISTORY_MARKER,
+      view,
+      modal,
+      settingsTab
+    };
+  },
+
+  syncAppHistory(overrides = {}, options = {}) {
+    if (!this.historyReady || this.historySyncMuted || typeof history === 'undefined') return;
+    const current = this.normalizeAppHistoryState(history.state);
+    const next = this.normalizeAppHistoryState({
+      ...current,
+      view: this.currentFolderId || 'all',
+      modal: this.currentManagedModal(),
+      settingsTab: this.activeSettingsTab || 'basic',
+      ...overrides
+    });
+    history[options.replace ? 'replaceState' : 'pushState'](next, '');
+  },
+
+  applyAppHistoryState(state) {
+    const next = this.normalizeAppHistoryState(state);
+    this.historySyncMuted = true;
+    try {
+      const nextView = String(next.view || 'all');
+      if (nextView !== String(this.currentFolderId)) {
+        this.expandAncestorsOfFolder(nextView);
+        this.currentFolderId = nextView;
+        this.selectedIds.clear();
+        this.pendingViewTransition = true;
+      }
+
+      if (this.isKnownSettingsTab(next.settingsTab)) this.activeSettingsTab = next.settingsTab;
+
+      if (next.modal === 'settings') {
+        this.openModal('#settingsModal', { immediate: true });
+        this.fillSettingsForm();
+        this.renderSettingsTabs({ syncHistory: false });
+        this.closeModal('#onboardingModal', { immediate: true });
+      } else if (next.modal === 'onboarding') {
+        this.closeModal('#settingsModal', { immediate: true });
+        this.openModal('#onboardingModal', { immediate: true });
+        this.renderOnboardingBackupStatus();
+      } else {
+        this.closeModal('#settingsModal', { immediate: true });
+        this.closeModal('#onboardingModal', { immediate: true });
+      }
+
+      if (this.firstRunLocked && !this.bookmarksLoaded) this.renderLockedState();
+      else this.render();
+    } finally {
+      this.historySyncMuted = false;
+    }
   },
 
   /**
@@ -1012,12 +1125,14 @@ const App = {
     }).join('');
   },
 
-  switchView(folderId) {
+  switchView(folderId, options = {}) {
     const nextId = folderId || 'all';
+    if (String(this.currentFolderId) === String(nextId) && !options.force) return;
     this.expandAncestorsOfFolder(nextId);
     this.currentFolderId = nextId;
     this.selectedIds.clear();
     this.pendingViewTransition = true;
+    if (options.syncHistory !== false) this.syncAppHistory({ view: nextId, modal: this.currentManagedModal() }, { replace: Boolean(options.replaceHistory) });
     this.render();
   },
 
@@ -1205,8 +1320,10 @@ const App = {
 
   async maybeShowOnboarding(force = false) {
     if (!force && this.settings.onboarding?.thumbnailIntroDone && this.settings.onboarding?.introVersion === APP_VERSION) return;
+    const alreadyOpen = this.currentManagedModal() === 'onboarding';
     this.renderOnboardingBackupStatus();
     this.openModal('#onboardingModal');
+    this.syncAppHistory({ modal: 'onboarding' }, { replace: alreadyOpen });
   },
 
   async closeOnboarding(markDone = false, options = {}) {
@@ -1219,6 +1336,7 @@ const App = {
       await this.saveSettings();
     }
     this.closeModal('#onboardingModal');
+    this.syncAppHistory({ modal: null }, { replace: true });
     if (!options.skipRender) {
       if (this.bookmarksLoaded) this.renderMain();
       else this.renderLockedState();
@@ -1232,8 +1350,7 @@ const App = {
     this.render();
     this.showToast(this.adapter.isChrome ? '已读取浏览器书签，截图仍需单独确认' : '已进入演示数据模式');
     if (options.openSettings) {
-      this.activeSettingsTab = 'thumbnail';
-      this.openSettings();
+      this.openSettings({ tab: 'thumbnail' });
     }
     if (options.generate) {
       await this.generatePostersForVisible(true);
@@ -2837,13 +2954,21 @@ const App = {
     await this.deleteSelected();
   },
 
-  openSettings() {
+  openSettings(options = {}) {
+    const alreadyOpen = this.currentManagedModal() === 'settings';
+    if (this.isKnownSettingsTab(options.tab)) this.activeSettingsTab = options.tab;
     this.openModal('#settingsModal');
     this.fillSettingsForm();
-    this.renderSettingsTabs();
+    this.renderSettingsTabs({ syncHistory: false });
     // 每次打开设置时重新绑定并刷新缩略图设置卡片状态
     this.bindThumbnailCustomControls();
     this.bindPosterPresetControls();
+    if (options.syncHistory !== false) this.syncAppHistory({ modal: 'settings', settingsTab: this.activeSettingsTab }, { replace: Boolean(options.replaceHistory || alreadyOpen) });
+  },
+
+  closeSettings(options = {}) {
+    this.closeModal('#settingsModal');
+    if (options.syncHistory !== false) this.syncAppHistory({ modal: null }, { replace: true });
   },
 
   fillSettingsForm() {
@@ -2856,6 +2981,7 @@ const App = {
     $('#batchSize').value = this.settings.ai.batchSize || 30;
     if ($('#languageSelect')) $('#languageSelect').value = this.locale();
     if ($('#settingsLanguageSelect')) $('#settingsLanguageSelect').value = this.locale();
+    if ($('#settingsCardSizeSelect')) $('#settingsCardSizeSelect').value = this.settings.cardSize || 'large';
     $('#minConfidence').value = this.settings.ai.minConfidence || 70;
     $('#sendMeta').checked = this.settings.ai.sendMeta;
     $('#sendBody').checked = this.settings.ai.sendBody;
@@ -2885,6 +3011,7 @@ const App = {
     }
     $('#captureSize') && ($('#captureSize').value = `${this.settings.thumbnails?.captureWidth || 1440}x${this.settings.thumbnails?.captureHeight || 900}`);
     if ($('#posterAspectSelect')) $('#posterAspectSelect').value = this.settings.thumbnails?.posterAspect || 'landscape';
+    if ($('#settingsPosterAspectSelect')) $('#settingsPosterAspectSelect').value = this.settings.thumbnails?.posterAspect || 'landscape';
     $('#cropMode') && ($('#cropMode').value = this.settings.thumbnails?.cropMode || 'smart');
     $('#whitePageEnhance') && ($('#whitePageEnhance').checked = this.settings.thumbnails?.whitePageEnhance !== false);
     if ($('#requireBackupBeforeOrganize')) $('#requireBackupBeforeOrganize').checked = this.settings.safety?.requireBackupBeforeOrganize !== false;
@@ -2894,36 +3021,40 @@ const App = {
     this.renderSettingsSummaries();
   },
 
-  renderSettingsTabs() {
+  renderSettingsTabs(options = {}) {
     $$('.settings-nav button').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === this.activeSettingsTab));
+    $$('.settings-flow-step').forEach((btn) => btn.classList.toggle('active', btn.dataset.jumpTab === this.activeSettingsTab));
     $$('.settings-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === this.activeSettingsTab));
     const activeButton = $('.settings-nav button.active');
     activeButton?.scrollIntoView({ block: 'nearest', inline: 'center' });
     this.renderSettingsHeader();
     this.renderSettingsSummaries();
+    if (options.syncHistory !== false && $('#settingsModal')?.classList.contains('show')) {
+      this.syncAppHistory({ modal: 'settings', settingsTab: this.activeSettingsTab }, { replace: true });
+    }
   },
 
   renderSettingsHeader() {
     const copy = {
-      basic: ['基础', '设置首页显示，并快速进入备份、海报和 AI 流程'],
-      appearance: ['外观', '调整语言和卡片阅读密度'],
-      thumbnail: ['海报', '选择截图预设，必要时再微调高级参数'],
-      ai: ['AI', '连接服务商，并控制发送内容和应用规则'],
-      data: ['数据', '导出完整书签备份，管理插件自己的数据'],
+      basic: ['基础', '先把首页显示和常用入口整理清楚'],
+      appearance: ['外观', '统一处理语言、卡片大小和海报比例'],
+      thumbnail: ['海报', '先选预设，只有特殊页面再展开高级参数'],
+      ai: ['AI', '连接服务商，并约束 AI 能看什么、能做什么'],
+      data: ['数据', '先导出完整备份，再管理插件自己的数据'],
       privacy: ['隐私', '确认读取书签、访问网页和发送 AI 数据的边界'],
-      about: ['关于', '查看版本定位和使用原则']
+      about: ['关于', '查看版本定位、原则和迁移方式']
     };
     const [title, subtitle] = copy[this.activeSettingsTab] || copy.basic;
     if ($('#settingsPanelTitle')) $('#settingsPanelTitle').textContent = title;
     if ($('#settingsPanelSubtitle')) $('#settingsPanelSubtitle').textContent = subtitle;
 
     const dock = {
-      basic: ['基础', '保存当前显示偏好，整理前建议先备份', 'download', '导出备份', 'gear', '保存设置'],
-      appearance: ['外观', '保存语言和卡片显示方式，回到首页立即生效', 'download', '导出备份', 'gear', '保存外观'],
-      thumbnail: ['海报', '保存预设后，可立即为当前海报墙生成真实截图', 'gear', '仅保存', 'image', '保存并生成'],
+      basic: ['基础', '保存显示偏好后，首页会立刻变得更清爽', 'download', '导出备份', 'gear', '保存设置'],
+      appearance: ['外观', '语言、卡片大小和比例会立即同步到首页', 'download', '导出备份', 'gear', '保存外观'],
+      thumbnail: ['海报', '先保存预设，再决定是否立刻生成当前海报墙', 'gear', '仅保存', 'image', '保存并生成'],
       ai: ['AI', '保存配置后，开始处理当前可见书签', 'refresh', '测试连接', 'sparkle', '保存并开始'],
       data: ['数据', 'HTML 最适合恢复到浏览器书签管理器', 'download', '导出 JSON', 'download', '导出 HTML'],
-      privacy: ['隐私', '隐私页只说明边界；备份设置在数据页管理', 'database', '数据与备份', 'gear', '保存设置'],
+      privacy: ['隐私', '隐私页主要负责说明，备份和导出在数据页', 'database', '数据与备份', 'gear', '保存设置'],
       about: ['关于', '设置可以导出，方便迁移或排查', 'download', '导出设置', 'close', '关闭']
     };
     const [dockTitle, dockHint, secondaryIcon, secondary, primaryIcon, primary] = dock[this.activeSettingsTab] || dock.basic;
@@ -2970,13 +3101,13 @@ const App = {
   async handleSettingsDockPrimary() {
     if (this.activeSettingsTab === 'thumbnail') {
       await this.collectAndSaveSettings({ silent: true });
-      this.closeModal('#settingsModal');
+      this.closeSettings();
       this.generatePostersForVisible(true);
       return;
     }
     if (this.activeSettingsTab === 'ai') {
       await this.collectAndSaveSettings({ silent: true });
-      this.closeModal('#settingsModal');
+      this.closeSettings();
       this.openAiConfirm('visible');
       return;
     }
@@ -2985,7 +3116,7 @@ const App = {
       return;
     }
     if (this.activeSettingsTab === 'about') {
-      this.closeModal('#settingsModal');
+      this.closeSettings();
       return;
     }
     await this.collectAndSaveSettings();
@@ -3026,6 +3157,7 @@ const App = {
 
   async collectAndSaveSettings(options = {}) {
     this.settings.language = $('#settingsLanguageSelect')?.value || $('#languageSelect')?.value || this.settings.language || 'zh-CN';
+    this.settings.cardSize = $('#settingsCardSizeSelect')?.value || $('#sizeSelect')?.value || this.settings.cardSize || 'large';
     this.settings.showFolderTag = $('#showFolderTag').checked;
     this.settings.showDate = $('#showDate').checked;
     this.settings.thumbnails = this.settings.thumbnails || {};
@@ -3044,7 +3176,7 @@ const App = {
     const [cw, ch] = sizeValue.split('x').map((n) => Number(n));
     this.settings.thumbnails.captureWidth = cw || 1440;
     this.settings.thumbnails.captureHeight = ch || 900;
-    this.settings.thumbnails.posterAspect = $('#posterAspectSelect')?.value || this.settings.thumbnails.posterAspect || 'landscape';
+    this.settings.thumbnails.posterAspect = $('#settingsPosterAspectSelect')?.value || $('#posterAspectSelect')?.value || this.settings.thumbnails.posterAspect || 'landscape';
     this.settings.thumbnails.cropMode = $('#cropMode')?.value || 'smart';
     this.settings.thumbnails.whitePageEnhance = $('#whitePageEnhance')?.checked !== false;
     this.settings.safety = this.settings.safety || {};
@@ -3061,8 +3193,12 @@ const App = {
     this.settings.ai.sendBody = false;
     this.settings.ai.allowRename = $('#allowRename').checked;
     this.settings.ai.allowCreateFolder = false;
+    if ($('#languageSelect')) $('#languageSelect').value = this.settings.language;
+    if ($('#sizeSelect')) $('#sizeSelect').value = this.settings.cardSize;
+    if ($('#posterAspectSelect')) $('#posterAspectSelect').value = this.settings.thumbnails.posterAspect;
     await this.saveSettings();
     this.renderSettingsSummaries();
+    this.syncToolbarSelects();
     this.render();
     if (!options.silent) this.showToast('设置已保存');
   },
@@ -3120,8 +3256,7 @@ const App = {
 
   openAiConfirm(mode) {
     if (!this.settings.ai.enabled) {
-      this.activeSettingsTab = 'ai';
-      this.openSettings();
+      this.openSettings({ tab: 'ai' });
       this.showToast(this.t('aiSettingsToast'));
       return;
     }
@@ -3419,18 +3554,23 @@ const App = {
     return true;
   },
 
-  openModal(selector) {
+  openModal(selector, options = {}) {
     const modal = $(selector);
     if (!modal) return;
     clearTimeout(this.modalCloseTimers[selector]);
     modal.classList.remove('closing');
     modal.classList.add('show');
+    if (options.immediate) modal.offsetHeight;
   },
 
-  closeModal(selector) {
+  closeModal(selector, options = {}) {
     const modal = $(selector);
     if (!modal || !modal.classList.contains('show')) return;
     clearTimeout(this.modalCloseTimers[selector]);
+    if (options.immediate) {
+      modal.classList.remove('show', 'closing');
+      return;
+    }
     modal.classList.add('closing');
     this.modalCloseTimers[selector] = setTimeout(() => {
       modal.classList.remove('show', 'closing');

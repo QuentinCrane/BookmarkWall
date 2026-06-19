@@ -83,6 +83,8 @@ ok(html.includes('src/app.js?v=0.7.21'), 'HTML busts app script cache for latest
 ok(html.includes('settings-overview-card'), 'settings basic tab includes overview quick-start card');
 ok(html.includes('data-jump-tab="ai"') && app.includes('data-jump-tab'), 'settings can jump directly to AI setup/start flow');
 ok(html.includes('class="primary ai-start-action"') && html.includes('data-proxy="saveAndRunAiBtn"'), 'AI settings show a first-screen save-and-run action');
+ok(html.includes('settings-flow-strip') && html.includes('settings-nav-group'), 'settings are grouped into a clearer flow and navigation structure');
+ok(html.includes('id="settingsCardSizeSelect"') && html.includes('id="settingsPosterAspectSelect"'), 'appearance settings expose card size and poster ratio controls directly');
 ok(css.includes('.settings-dock') && css.includes('.settings-status-strip'), 'CSS includes latest settings refinement');
 ok(css.includes('@media(max-width:820px)'), 'CSS includes final mobile and status strip polish');
 ok(css.includes('.settings-card') && css.includes('grid-template-columns:1fr'), 'mobile poster grid uses a single stable column');
@@ -95,6 +97,7 @@ ok(app.includes('repairFailedPosters') && app.includes("reason: 'repair-failed'"
 ok(app.includes('renderSettingsHeader') && app.includes('handleSettingsDockPrimary'), 'settings dock actions change by active tab');
 ok(css.includes('.bp-setting-card') && css.includes('.bp-choice-card'), 'CSS includes settings operation and visual refinement pass');
 ok(css.includes('.setting-hero-card') && css.includes('.security-card'), 'CSS includes restrained settings surfaces and readable card footers');
+ok(app.includes('APP_HISTORY_MARKER') && app.includes('popstate') && app.includes('syncAppHistory'), 'app syncs key views and settings overlays with browser history for back navigation');
 ok(app.includes('class="card-head"') && css.includes('.card-head .select-dot'), 'poster card controls are integrated into the info area');
 ok(css.includes('grid-template-columns:minmax(0,1fr)') && css.includes('.folder-tag'), 'poster card folder row uses the full metadata width');
 ok(app.includes('enhanceToolbarSelects') && css.includes('.custom-select-menu'), 'toolbar select menus use styled custom dropdowns');
